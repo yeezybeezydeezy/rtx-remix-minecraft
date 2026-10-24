@@ -8,14 +8,11 @@ import com.nvidia.rtxremix.minecraft.light.HeldLightState;
 import com.nvidia.rtxremix.minecraft.particle.ParticleTint;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.SpriteSet;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.SimpleParticleType;
@@ -27,10 +24,13 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.nvidia.rtxremix.minecraft.RtxRemixMod;
 import com.nvidia.rtxremix.minecraft.mixin.ParticleManagerAccessor;
+import com.nvidia.rtxremix.minecraft.mixin.ParticleResourcesAccessor;
+import net.minecraft.client.particle.ParticleResources;
 import org.joml.Matrix4f;
 import org.joml.Quaternionfc;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
+import net.minecraft.util.LightCoordsUtil;
 
 /**
  * Draws the lit effects of a hand-held item into the Remix capture: its
@@ -78,14 +78,17 @@ public final class HeldItemEffectsRenderer {
      * active, {@code mode} is a hand, the item carries a lit element, and that
      * element is burning in its holder's hand, see {@link HeldLightState}.
      *
-     * @param matrices  the item renderer's stack, with the item's block-space
-     *                  pose on top; left as found
-     * @param model     the item's baked model, whose display transform for
-     *                  {@code mode} is part of that pose
+     * <p>Not called on Minecraft 26.3 yet: items are submitted there and drawn
+     * later, so the holder this needs is no longer in scope when the item's pose is.
+     *
+     * @param matrices     the item renderer's stack, with the item's block-space
+     *                     pose on top; left as found
+     * @param displayScale the scale of the item model's display transform for
+     *                     {@code mode}, which is part of that pose
      */
     public static void render(ItemStack stack, ItemDisplayContext mode,
-                              PoseStack matrices, MultiBufferSource consumers,
-                              BakedModel model) {
+                              PoseStack matrices, RemixVertexConsumerProvider consumers,
+                              float displayScale) {
         EntityRenderContext context = EntityRenderContext.get();
         if (!context.isRemixPass() || !HeldItemFlame.isHandMode(mode)) return;
         SimpleParticleType flameParticle = HeldItemFlame.particleFor(stack);
@@ -114,7 +117,6 @@ public final class HeldItemEffectsRenderer {
         // A hand draws its item scaled down (item/generated: 0.68 in first person,
         // 0.55 in third). The flame and smoke are world-sized, so the poses divide
         // that scale back out.
-        float displayScale = model.getTransforms().getTransform(mode).scale.x;
         VertexConsumer buffer = consumers.getBuffer(EFFECT_LAYER);
 
         matrices.pushPose();
@@ -145,8 +147,10 @@ public final class HeldItemEffectsRenderer {
     }
 
     private static SpriteSet spriteProvider(Minecraft client, ParticleType<?> particle) {
-        Object provider = ((ParticleManagerAccessor) client.particleEngine)
-                .getSpriteAwareFactories()
+        ParticleResources resources =
+                ((ParticleManagerAccessor) client.particleEngine).rtxremix$getResources();
+        Object provider = ((ParticleResourcesAccessor) resources)
+                .rtxremix$getSpriteSets()
                 .get(BuiltInRegistries.PARTICLE_TYPE.getKey(particle));
         return provider instanceof SpriteSet spriteProvider ? spriteProvider : null;
     }
@@ -174,7 +178,7 @@ public final class HeldItemEffectsRenderer {
                 .setColor(grey, grey, grey, alpha)
                 .setUv(u, v)
                 .setOverlay(OverlayTexture.NO_OVERLAY)
-                .setLight(LightTexture.FULL_BRIGHT)
+                .setLight(LightCoordsUtil.FULL_BRIGHT)
                 .setNormal(entry, 0.0f, 0.0f, 1.0f);
     }
 }

@@ -47,13 +47,11 @@ import com.nvidia.rtxremix.minecraft.entity.RemixEntitySubmitter;
 import com.nvidia.rtxremix.minecraft.entity.RemixFirstPersonPass;
 import com.nvidia.rtxremix.minecraft.cloud.CloudRenderer;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.ItemInHandRenderer;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
@@ -76,6 +74,10 @@ import java.util.concurrent.CompletionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import net.minecraft.client.renderer.FirstPersonHandsAndItemsRenderer;
+import net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState;
+import net.minecraft.client.renderer.state.level.PlayerRenderState;
+import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
 
 /**
  * Render-thread bridge between Minecraft's world and the RTX Remix runtime.
@@ -1212,7 +1214,7 @@ public class RemixRenderer {
             float upZ = rightX * forwardY - rightY * forwardX;
     
             Minecraft client = Minecraft.getInstance();
-            float worldFov = (float) client.gameRenderer.getFov(camera, tickDelta, true);
+            float worldFov = camera.getFov();
             int width = client.getWindow().getWidth();
             int height = client.getWindow().getHeight();
             float aspect = (float) width / (float) height;
@@ -1450,11 +1452,9 @@ public class RemixRenderer {
      * Captures vanilla's targeted-block outline for Remix submission later in
      * the same frame.
      */
-    public void captureBlockOutline(
-            LevelRenderContext context,
-            LevelRenderContext.BlockOutlineContext outline) {
+    public void captureBlockOutline(BlockOutlineRenderState outline) {
         if (blockOutlinePass != null) {
-            blockOutlinePass.captureBlockOutline(context, outline);
+            blockOutlinePass.captureBlockOutline(outline);
         }
     }
     
@@ -1691,13 +1691,13 @@ public class RemixRenderer {
     }
 
     public void captureFirstPersonModel(
-            ItemInHandRenderer heldItemRenderer,
+            FirstPersonHandsAndItemsRenderer handsRenderer,
             float tickDelta,
             PoseStack matrices,
-            LocalPlayer player,
-            int light) {
+            PlayerRenderState playerState,
+            FirstPersonHandsAndItemsRenderState handsState) {
         if (firstPersonPass != null && initialized && RtxRemixMod.isRtxEnabled()) {
-            firstPersonPass.capture(heldItemRenderer, tickDelta, matrices, player, light);
+            firstPersonPass.capture(handsRenderer, tickDelta, matrices, playerState, handsState);
         }
     }
 }

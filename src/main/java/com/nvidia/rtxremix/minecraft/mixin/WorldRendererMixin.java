@@ -51,6 +51,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.Vec3;
+import com.mojang.renderpearl.api.buffers.GpuBufferSlice;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
+import org.joml.Vector4f;
+import org.spongepowered.asm.mixin.Final;
 
 /**
  * Reroutes vanilla's world render into the Remix capture while a Remix world is
@@ -77,15 +81,27 @@ public abstract class WorldRendererMixin implements WorldRendererTerrainAccess {
     @Shadow
     private @Nullable SectionRenderDispatcher sectionRenderDispatcher;
 
+    @Shadow
+    @Final
+    private LevelRenderState levelRenderState;
+
     private ProfileScope rtxremix$renderScope;
 
     @Inject(method = "render", at = @At("HEAD"))
-    private void rtxremix$renderHead(CallbackInfo ci) {
+    private void rtxremix$renderHead(
+            GraphicsResourceAllocator resourceAllocator,
+            boolean renderOutline,
+            CameraRenderState cameraState,
+            GpuBufferSlice terrainFog,
+            Vector4f fogColor,
+            boolean shouldRenderSky,
+            boolean consistentDepthRequired,
+            CallbackInfo ci) {
         if (rtxremix$renderScope != null) {
             rtxremix$renderScope.close();
         }
         rtxremix$renderScope = ProfileScope.begin("WorldRenderer.render");
-        RtxRemixMod.onWorldRenderStart();
+        RtxRemixMod.onWorldRenderStart(renderOutline ? levelRenderState.blockOutlineRenderState : null);
     }
 
     @Redirect(

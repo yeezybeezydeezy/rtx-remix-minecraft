@@ -5,11 +5,11 @@
 package com.nvidia.rtxremix.minecraft.particle.rapids;
 
 import com.nvidia.rtxremix.minecraft.RtxRemixMod;
-import net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandler;
-import net.fabricmc.fabric.api.client.render.fluid.v1.FluidRenderHandlerRegistry;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.color.block.BlockTintSource;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.Particle;
+import net.minecraft.client.particle.SingleQuadParticle;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.tags.FluidTags;
@@ -53,7 +53,7 @@ public final class WaterRapidParticleSpawner {
             return;
         }
 
-        RandomSource random = world.random;
+        RandomSource random = world.getRandom();
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         SpawnBudget budget = currentTickBudget(world);
         if (!budget.hasRemaining()) {
@@ -250,8 +250,9 @@ public final class WaterRapidParticleSpawner {
     }
 
     private static float[] foamColor(ClientLevel world, BlockPos pos, FluidState fluidState) {
-        FluidRenderHandler handler = FluidRenderHandlerRegistry.INSTANCE.get(fluidState.getType());
-        int color = handler != null ? handler.getFluidColor(world, pos, fluidState) : 0x3F76E4;
+        BlockTintSource tint = Minecraft.getInstance().getModelManager()
+                .getFluidStateModelSet().get(fluidState).tintSource();
+        int color = tint != null ? tint.colorInWorld(world.getBlockState(pos), world, pos) : 0x3F76E4;
         float r = ((color >> 16) & 0xFF) / 255.0f;
         float g = ((color >> 8) & 0xFF) / 255.0f;
         float b = (color & 0xFF) / 255.0f;
@@ -267,8 +268,8 @@ public final class WaterRapidParticleSpawner {
     }
 
     private static void tint(Particle particle, float[] color) {
-        if (particle != null) {
-            particle.setColor(color[0], color[1], color[2]);
+        if (particle instanceof SingleQuadParticle quad) {
+            quad.setColor(color[0], color[1], color[2]);
         }
     }
 

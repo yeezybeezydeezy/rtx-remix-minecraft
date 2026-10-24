@@ -15,14 +15,14 @@ import com.nvidia.rtxremix.minecraft.asset.RemixMaterialStore;
 import com.nvidia.rtxremix.minecraft.asset.RemixMesh;
 import com.nvidia.rtxremix.minecraft.asset.RemixMeshStore;
 import com.nvidia.rtxremix.minecraft.asset.RemixMeshSurface;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.client.Camera;
+import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
 
 /**
  * Captures vanilla's targeted-block outline and submits it as dynamic Remix
@@ -72,34 +72,28 @@ public final class RemixBlockOutlinePass implements AutoCloseable {
     }
 
     /**
-     * Captures the targeted block's vanilla outline shape. Shape evaluation
-     * happens during the Fabric callback so modded block shape behavior is
-     * preserved exactly at the point vanilla draws it.
+     * Captures the targeted block's vanilla outline shape. The shape is the one
+     * vanilla extracted for its own outline, so modded block shape behavior is
+     * preserved exactly.
      */
-    public void captureBlockOutline(
-            LevelRenderContext context,
-            LevelRenderContext.BlockOutlineContext outline) {
-        ClientLevel world = context.world();
-        BlockPos blockPos = outline.blockPos();
-        if (world == null
-                || outline.blockState().isAir()
-                || !world.getWorldBorder().isWithinBounds(blockPos)) {
+    public void captureBlockOutline(BlockOutlineRenderState outline) {
+        Minecraft client = Minecraft.getInstance();
+        ClientLevel world = client.level;
+        if (world == null || outline == null) {
             pendingOutline = null;
             return;
         }
-
-        VoxelShape shape = outline.blockState().getShape(
-                world,
-                blockPos,
-                CollisionContext.of(outline.entity()));
+        BlockPos blockPos = outline.pos();
+        VoxelShape shape = outline.shape();
         if (shape.isEmpty()) {
             pendingOutline = null;
             return;
         }
 
-        double cameraX = outline.cameraX();
-        double cameraY = outline.cameraY();
-        double cameraZ = outline.cameraZ();
+        Camera camera = client.gameRenderer.mainCamera();
+        double cameraX = camera.position().x;
+        double cameraY = camera.position().y;
+        double cameraZ = camera.position().z;
         double offsetX = blockPos.getX() - cameraX;
         double offsetY = blockPos.getY() - cameraY;
         double offsetZ = blockPos.getZ() - cameraZ;
@@ -118,7 +112,6 @@ public final class RemixBlockOutlinePass implements AutoCloseable {
             return;
         }
 
-        Minecraft client = Minecraft.getInstance();
         int framebufferWidth = client.getWindow().getWidth();
         int framebufferHeight = client.getWindow().getHeight();
         if (framebufferHeight <= 0) {
@@ -126,8 +119,7 @@ public final class RemixBlockOutlinePass implements AutoCloseable {
             return;
         }
 
-        float tickDelta = context.tickCounter().getGameTimeDeltaPartialTick(true);
-        double fovDegrees = context.gameRenderer().getFov(context.camera(), tickDelta, true);
+        double fovDegrees = camera.getFov();
         fovDegrees = Math.max(MIN_FOV_DEGREES, Math.min(MAX_FOV_DEGREES, fovDegrees));
         double tanHalfFov = Math.tan(Math.toRadians(fovDegrees) * 0.5);
         double lineWidthPixels = OUTLINE_WIDTH_PIXELS * Math.max(

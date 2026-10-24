@@ -177,6 +177,7 @@ public class RemixVertexConsumerProvider {
         @Override public VertexConsumer setUv2(int u, int v) { return this; }
         @Override public VertexConsumer setNormal(float x, float y, float z) { return this; }
         @Override public VertexConsumer setLineWidth(float width) { return this; }
+        @Override public VertexConsumer setColor(int color) { return this; }
         @Override public VertexConsumer setUv3(float u, float v) { return this; }
     }
 }

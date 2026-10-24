@@ -17,7 +17,6 @@ import com.nvidia.rtxremix.minecraft.settings.RtxSettingsScreen;
 import com.nvidia.rtxremix.minecraft.settings.RtxSettingsFactory;
 import com.nvidia.rtxremix.minecraft.settings.RtxSettings;
 import com.nvidia.rtxremix.minecraft.screen.CopperBeaconScreen;
-import com.nvidia.rtxremix.minecraft.profiling.WorldRendererProfilingAccess;
 import com.nvidia.rtxremix.minecraft.profiling.TracyGCListener;
 import com.nvidia.rtxremix.minecraft.profiling.ProfileScope;
 import com.nvidia.rtxremix.minecraft.particle.rapids.RapidFoamParticles;
@@ -99,6 +98,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.ToIntBiFunction;
+import net.minecraft.client.renderer.state.level.BlockOutlineRenderState;
 
 /**
  * Main mod entrypoint for RTX Remix Renderer.
@@ -329,7 +329,6 @@ public class RtxRemixMod implements ClientModInitializer {
         BlockEntityRenderers.register(
                 CopperBeaconBlockEntity.TYPE, CopperBeaconBlockEntityRenderer::new);
         MenuScreens.register(CopperBeaconScreenHandler.TYPE, CopperBeaconScreen::new);
-        RemixWeatherRenderer.registerShaders();
         LOGGER.info("========================================");
         LOGGER.info("RTX Remix Renderer v{} initializing...", getModVersion());
         LOGGER.info("========================================");
@@ -636,12 +635,16 @@ public class RtxRemixMod implements ClientModInitializer {
 
     /**
      * Start of vanilla's world render, before entities and block entities submit their
-     * geometry. Applies pending world and resource changes and preloads the large
+     * geometry. Captures the targeted block's outline, null when vanilla draws none this
+     * frame, and applies pending world and resource changes and preloads the large
      * block-entity atlases, so block entities are captured against current textures.
      */
-    public static void onWorldRenderStart() {
+    public static void onWorldRenderStart(BlockOutlineRenderState blockOutline) {
         if (renderer != null && renderer.isInitialized()) {
             renderer.beginBlockOutlineFrame();
+            if (blockOutline != null && isRtxEnabled()) {
+                renderer.captureBlockOutline(blockOutline);
+            }
             if (rtxEnabled) {
                 try (ProfileScope startScope = ProfileScope.begin("WorldRender.START")) {
                     renderer.beginWorldRenderFrame();
