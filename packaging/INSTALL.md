@@ -1,13 +1,18 @@
 # RTX Remix for Minecraft
 
-This archive installs a Fabric mod that renders Minecraft Java Edition 1.21.1
+This archive installs a Fabric mod that renders Minecraft Java Edition 26.3
 through NVIDIA RTX Remix. It sets up a launcher, Java,
 Fabric, the mod, and the RTX Remix runtime for you.
 
+It is an unofficial community port of NVIDIA's RTX Remix for Minecraft, which
+targets 1.21.1. NVIDIA does not support this port; report problems at
+<https://github.com/yeezybeezydeezy/rtx-remix-minecraft/issues>.
+
 ## What You Need
 
-- Windows 10 or 11, x64 or ARM64.
-- Minecraft Java Edition 1.21.1, on a Microsoft account that owns the game.
+- Windows 10 or 11, x64. This build carries no ARM64 runtime, and the
+  installer stops on ARM64.
+- Minecraft Java Edition 26.3, on a Microsoft account that owns the game.
 - A GeForce RTX 30-series or newer GPU with NVIDIA driver 616.92 or newer.
 - About 5 GB of free disk space while installing; about 3 GB stays in use.
 - An internet connection while the installer runs.
@@ -50,9 +55,9 @@ This is a beta. The mod began as a technology showcase and was tuned against
 one showcase world, built for this project by BlockWorks
 (<https://www.blockworks.uk/>), so the places that world visits are where it
 looks and runs best. It ships with known issues, tracked at
-<https://github.com/NVIDIAGameWorks/rtx-remix-minecraft/issues>, and there are
+<https://github.com/yeezybeezydeezy/rtx-remix-minecraft/issues>, and there are
 bugs yet to be found. It has had limited testing alongside other
-mods, it targets Minecraft 1.21.1 only, and blocks, mobs, dimensions, and
+mods, this port targets Minecraft 26.3 only, and blocks, mobs, dimensions, and
 situations the showcase never reaches have had less care. When something
 breaks, report it (see below); that is how it gets fixed.
 
@@ -104,7 +109,7 @@ launch.
 `INSTALLER_REFERENCE.md` covers the rest: the modes, every flag, headless and
 CI use, and what the installer verifies before it downloads anything. To add
 the mod to a Fabric instance you already have instead, see
-<https://github.com/NVIDIAGameWorks/rtx-remix-minecraft/blob/main/docs/PLAYING.md#installing-without-the-installer>.
+<https://github.com/yeezybeezydeezy/rtx-remix-minecraft#install>.
 
 ## First Launch
 
@@ -148,7 +153,7 @@ enabled. For a direct comparison, type `/rtx off`, look around, then `/rtx on`.
 ## Updating
 
 Download the new archive from
-<https://github.com/NVIDIAGameWorks/rtx-remix-minecraft/releases/latest>,
+<https://github.com/yeezybeezydeezy/rtx-remix-minecraft/releases>,
 extract it, and run `install.bat` again. It
 preselects Upgrade and replaces the mod and its supporting files in the
 launcher that already has them. Launcher, Minecraft, Fabric, and other options
@@ -228,7 +233,7 @@ if you are wiping it anyway.
 | Windows SmartScreen warns about the Prism Launcher download | Prism Launcher is open-source and is not signed by Microsoft. Choose More info, then Run anyway. You can also install it yourself from <https://prismlauncher.org>, start it once, then re-run `install.bat`, which detects it |
 | The Prism download fails | Check the firewall and retry. The installer asks GitHub for the newest Prism release, and a shared network address can hit GitHub's anonymous rate limit. If GitHub reports a rate limit, wait before retrying |
 | `Download failed after 3 attempts from` followed by an Adoptium URL and the error details | The Adoptium API at `api.adoptium.net` has to be reachable. Check the firewall and re-run |
-| `Failed to extract JDK 21 archive:` followed by the error details | Check free disk space and the permissions on your temporary folder, then re-run the installer to download and extract a fresh archive |
+| `Failed to extract JDK 25 archive:` followed by the error details | Check free disk space and the permissions on your temporary folder, then re-run the installer to download and extract a fresh archive |
 | The Fabric API download fails | `maven.fabricmc.net` has to be reachable. Check the firewall and re-run |
 | The installer refuses to choose a launcher | Both Prism and the Microsoft launcher are installed and the run was headless. Pass `-Launcher Prism` or `-Launcher Microsoft` |
 
@@ -242,7 +247,7 @@ say which mod was involved in your report.
 
 ## Reporting A Bug
 
-Open an issue at <https://github.com/NVIDIAGameWorks/rtx-remix-minecraft/issues>
+Open an issue at <https://github.com/yeezybeezydeezy/rtx-remix-minecraft/issues>
 for anything about the mod: what
 is in the world and how it looks, the settings screen, `/rtx` commands and
 keys, lighting profiles, the installer, and crashes. Denoiser, DLSS, or
@@ -275,8 +280,9 @@ the following:
     second shot from the same spot, then `/rtx on`.
 
 The full guides, covering the settings screen, the commands, camera paths, and
-how to give a map its own lighting, live with the project's source at
-<https://github.com/NVIDIAGameWorks/rtx-remix-minecraft>.
+how to give a map its own lighting, live with the upstream project's source
+at <https://github.com/NVIDIAGameWorks/rtx-remix-minecraft>. They describe its 1.21.1 build, but
+the features work the same way here.
 
 ## License
 

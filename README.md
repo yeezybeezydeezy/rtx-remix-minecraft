@@ -24,8 +24,9 @@ Not ported yet:
 - **Particles that use item textures.** Block and particle-atlas particles
   render; item-textured ones are skipped.
 - **Bed materials.** Beds get no RTX materials yet.
-- **The installer, automated tests and most docs.** These still describe the
-  1.21.1 build. Install by hand, as below.
+- **The automated tests and most docs.** These still describe the 1.21.1
+  build.
+- **ARM64.** Releases carry the x64 runtime only.
 
 The upstream mod was tuned against one showcase world, and blocks, mobs and
 dimensions that world never reaches have had less care. The same holds here,
@@ -33,20 +34,33 @@ plus whatever 26.3 changed that this port has not met yet.
 
 ## Download
 
-Get the jar from this fork's
+Get the release archive from this fork's
 [Releases page](https://github.com/yeezybeezydeezy/rtx-remix-minecraft/releases).
-Each release is a single Windows x64 jar that carries the RTX Remix runtime.
+It holds the installer and the mod jar, which carries the RTX Remix runtime.
 
 ## Install
 
-The bundled `install.bat` still installs the 1.21.1 build, so set up an
-instance yourself. [Prism Launcher](https://prismlauncher.org/) makes this
-straightforward:
+1. Extract the release archive.
+2. Double-click `install.bat` and follow the menu.
+3. Launch the **NVIDIA RTX Remix for Minecraft** instance in Prism Launcher,
+   or the profile of the same name in the Microsoft launcher.
+
+The installer sets up Fabric Loader 0.20.1, Fabric API and, where needed,
+Java 25 and a portable Prism Launcher. Running it over an install of the
+upstream 1.21.1 release moves that Prism instance to 26.3; back up its worlds
+first. The archive's `README.md` and `INSTALLER_REFERENCE.md` cover every
+option.
+
+### Installing By Hand
+
+To add the mod to a Fabric instance you already have, for example in
+[Prism Launcher](https://prismlauncher.org/):
 
 1. Create an instance for Minecraft 26.3 with Fabric Loader 0.20.1 or newer.
 2. Download [Fabric API](https://modrinth.com/mod/fabric-api) 0.165.0+26.3 or
    newer.
-3. Put Fabric API and the release jar in the instance's `mods` folder.
+3. Put Fabric API and the mod jar, from the archive's `mods` folder, in the
+   instance's `mods` folder.
 4. Launch. The first start unpacks the RTX Remix runtime, about 1 GB, into
    the game folder, so it takes longer than usual.
 
@@ -56,7 +70,8 @@ straightforward:
 - Minecraft Java Edition 26.3, on a Microsoft account that owns the game.
 - Java 25. Minecraft 26.3 ships with it, and launchers pick it automatically.
 - A GeForce RTX 30-series or newer GPU with NVIDIA driver 616.92 or newer.
-- About 2 GB of free disk space for the jar and the unpacked runtime.
+- About 3 GB of free disk space while installing; about 2 GB stays in use.
+- An internet connection while the installer runs.
 - 16 GB of system memory is recommended.
 
 ## Showcase World And Art Pack
@@ -123,13 +138,14 @@ Development happens on the `port/26.3` branch. You need:
 - An internet connection the first time, for Gradle dependencies and the
   Packman-hosted Remix runtime.
 
-Build a distributable win64 jar with:
+Build the win64 release archive, installer and jar, with:
 
 ```bash
-.\gradlew.bat verifyPackageJar -Parch=win64
+.\gradlew.bat releaseArchive -Parch=win64 -x test -x compileTestJava
 ```
 
-The jar lands in `build/distributions/`. If JDK 25 is installed somewhere
+The archive and jar land in `build/distributions/`. Tests are skipped
+because they do not compile on 26.3 yet. If JDK 25 is installed somewhere
 Gradle does not search, point an environment variable such as `JDK25` at it
 and add `-Porg.gradle.java.installations.fromEnv=JDK25`.
 

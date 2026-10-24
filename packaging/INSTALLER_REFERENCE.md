@@ -180,13 +180,14 @@ one to run. Which it uses depends on the architecture and the launcher.
 - **x64 with Prism.** No Java step at all. Prism downloads Mojang's own Java on
   the first launch of the instance.
 - **x64 with the Microsoft launcher.** `java` on the PATH, then the managed JDK
-  at `%LOCALAPPDATA%\RtxRemixMinecraft\jdk-21`, then a Java bundled with the
-  Microsoft launcher, then a downloaded Adoptium Temurin 21. Any version 8 or
+  at `%LOCALAPPDATA%\RtxRemixMinecraft\jdk-25`, then a Java bundled with the
+  Microsoft launcher, then a downloaded Adoptium Temurin 25. Any version 8 or
   newer runs the Fabric installer, so no architecture match is required. The
   game itself then runs on the launcher's own Java.
-- **ARM64.** `java` on the PATH only when it is version 21 and natively ARM64,
+- **ARM64.** `java` on the PATH only when it is version 25 and natively ARM64,
   then the managed JDK under the same test, then a downloaded Adoptium Temurin
-  21 for ARM64. Mojang publishes no ARM64 Windows Java, and an emulated x64
+  25 for ARM64. A build whose JAR carries no ARM64 runtime stops before this
+  step. Mojang publishes no ARM64 Windows Java, and an emulated x64
   Java breaks the native bridge, so the managed install is normally used. A new
   Prism instance on ARM64 is pinned to that JDK so Prism cannot substitute an
   x64 one.
