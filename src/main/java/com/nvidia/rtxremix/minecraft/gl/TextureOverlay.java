@@ -62,8 +62,8 @@ public class TextureOverlay {
         int width = client.getWindow().getGuiScaledWidth();
         int height = client.getWindow().getGuiScaledHeight();
 
-        if (client.getMainRenderTarget() != null) {
-            client.getMainRenderTarget().bindWrite(true);
+        if (client.gameRenderer.mainRenderTarget() != null) {
+            client.gameRenderer.mainRenderTarget().bindWrite(true);
         }
 
         Matrix4f savedProjection = RenderSystem.getProjectionMatrix();

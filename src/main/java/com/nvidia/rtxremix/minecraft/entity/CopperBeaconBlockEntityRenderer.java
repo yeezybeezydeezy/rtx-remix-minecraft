@@ -20,7 +20,7 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.resources.model.Material;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -34,16 +34,16 @@ public final class CopperBeaconBlockEntityRenderer
         implements BlockEntityRenderer<CopperBeaconBlockEntity> {
 
     public static final ModelLayerLocation BODY_MODEL_LAYER = new ModelLayerLocation(
-            ResourceLocation.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "copper_beacon"), "body");
+            Identifier.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "copper_beacon"), "body");
     public static final ModelLayerLocation LENS_MODEL_LAYER = new ModelLayerLocation(
-            ResourceLocation.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "copper_beacon"), "lens");
+            Identifier.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "copper_beacon"), "lens");
     private static final Material COPPER_TEXTURE = new Material(
             InventoryMenu.BLOCK_ATLAS,
-            ResourceLocation.withDefaultNamespace("block/copper_block"));
-    static final ResourceLocation LENS_SPRITE_ID =
-            ResourceLocation.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "block/copper_beacon_lens");
-    static final ResourceLocation UNLIT_LENS_SPRITE_ID =
-            ResourceLocation.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "block/copper_beacon_lens_unlit");
+            Identifier.withDefaultNamespace("block/copper_block"));
+    static final Identifier LENS_SPRITE_ID =
+            Identifier.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "block/copper_beacon_lens");
+    static final Identifier UNLIT_LENS_SPRITE_ID =
+            Identifier.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "block/copper_beacon_lens_unlit");
     private static final Material LENS_TEXTURE = new Material(
             InventoryMenu.BLOCK_ATLAS,
             LENS_SPRITE_ID);

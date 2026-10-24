@@ -8,13 +8,13 @@ import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.client.renderer.texture.SpriteContents;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.metadata.animation.FrameSize;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceMetadata;
 
 /** Real {@link TextureAtlasSprite}s for key and UV-remap tests, with the atlas rectangle chosen by the test. */
 final class SpriteFixtures {
 
-    private static final ResourceLocation ATLAS = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/atlas/test.png");
+    private static final Identifier ATLAS = Identifier.fromNamespaceAndPath("minecraft", "textures/atlas/test.png");
 
     private SpriteFixtures() {}
 
@@ -25,7 +25,7 @@ final class SpriteFixtures {
      */
     static TextureAtlasSprite sprite(int x, int y, int size, int atlasSize) {
         SpriteContents contents = new SpriteContents(
-                ResourceLocation.fromNamespaceAndPath("minecraft", "test/" + x + "_" + y),
+                Identifier.fromNamespaceAndPath("minecraft", "test/" + x + "_" + y),
                 new FrameSize(size, size),
                 new NativeImage(size, size, false),
                 ResourceMetadata.EMPTY);

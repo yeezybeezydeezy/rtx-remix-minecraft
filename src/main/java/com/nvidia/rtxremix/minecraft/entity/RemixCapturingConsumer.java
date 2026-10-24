@@ -22,7 +22,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.SpriteContents;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * A {@link VertexConsumer} that captures vertex data for RTX Remix.
@@ -48,7 +48,7 @@ public class RemixCapturingConsumer implements VertexConsumer {
      */
     static final int MAX_VERTICES = 4096;
 
-    private ResourceLocation textureId;
+    private Identifier textureId;
     private RenderLayerUtils.Topology topology = RenderLayerUtils.Topology.QUADS;
     /**
      * Whether the layer streams its vertex content afresh every frame. Resolved with
@@ -183,11 +183,11 @@ public class RemixCapturingConsumer implements VertexConsumer {
      */
     private boolean recordParts;
 
-    public RemixCapturingConsumer(ResourceLocation textureId, boolean recordParts) {
+    public RemixCapturingConsumer(Identifier textureId, boolean recordParts) {
         this(textureId, recordParts, RenderLayerUtils.Topology.QUADS, false);
     }
 
-    public RemixCapturingConsumer(ResourceLocation textureId, boolean recordParts,
+    public RemixCapturingConsumer(Identifier textureId, boolean recordParts,
                                   RenderLayerUtils.Topology topology,
                                   boolean transientGeometry) {
         this.recordParts = recordParts;
@@ -197,7 +197,7 @@ public class RemixCapturingConsumer implements VertexConsumer {
     }
 
     /** Reinitialize a pooled consumer for a new layer. Must be called after clear(). */
-    public void reinit(ResourceLocation textureId, boolean recordParts,
+    public void reinit(Identifier textureId, boolean recordParts,
                        RenderLayerUtils.Topology topology,
                        boolean transientGeometry) {
         this.recordParts = recordParts;
@@ -1322,7 +1322,7 @@ public class RemixCapturingConsumer implements VertexConsumer {
     RemixVertexConsumerProvider.CapturedLayer capturedLayer() { return capturedLayer; }
     // ---- Accessors ----
 
-    public ResourceLocation getTextureId() { return textureId; }
+    public Identifier getTextureId() { return textureId; }
     public RenderLayerUtils.Topology getTopology() { return topology; }
     public boolean isTransientGeometry() { return transientGeometry; }
     public int getVertexCount() { return vertexCount; }

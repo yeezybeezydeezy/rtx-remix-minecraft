@@ -4,13 +4,11 @@
  */
 package com.nvidia.rtxremix.minecraft.sky;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.nvidia.rtxremix.minecraft.light.LightManager.SkyLightState;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import net.minecraft.client.renderer.ShaderInstance;
 import com.nvidia.rtxremix.minecraft.profiling.ProfileScope;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL;
@@ -26,6 +24,7 @@ import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GL44;
+import com.mojang.renderpearl.backend.opengl.GlStateManager;
 
 /**
  * Renders the atmospheric sky panorama and its ambient statistics with compute
@@ -211,25 +210,25 @@ final class AtmosphericSkyGenerator {
             }
         }
 
-        ShaderInstance previousProgram;
+        // Minecraft's GL backend binds its program for every draw, so the one bound
+        // here only needs restoring for whatever raw GL runs before the next draw.
+        int previousProgram;
         try (ProfileScope ignored =
                 ProfileScope.begin("Sky.ProceduralGeneration.StateSave")) {
-            previousProgram = RenderSystem.isOnRenderThread()
-                    ? RenderSystem.getShader()
-                    : null;
+            previousProgram = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
         }
         try {
             try (ProfileScope ignored =
                     ProfileScope.begin(
                             "Sky.ProceduralGeneration.Setup")) {
                 GL20.glUseProgram(program);
-                GL13.glActiveTexture(
+                GlStateManager._activeTexture(
                         GL13.GL_TEXTURE0
                                 + TRANSMITTANCE_TEXTURE_UNIT);
                 GL11.glBindTexture(
                         GL11.GL_TEXTURE_2D,
                         transmittanceLut);
-                GL13.glActiveTexture(GL13.GL_TEXTURE0);
+                GlStateManager._activeTexture(GL13.GL_TEXTURE0);
                 bindImages();
                 uploadSkyParameters();
             }
@@ -259,12 +258,8 @@ final class AtmosphericSkyGenerator {
             GL15.glBindBuffer(
                     GL21.GL_PIXEL_PACK_BUFFER,
                     0);
-            GL13.glActiveTexture(GL13.GL_TEXTURE0);
-            if (previousProgram != null) {
-                previousProgram.apply();
-            } else {
-                GL20.glUseProgram(0);
-            }
+            GlStateManager._activeTexture(GL13.GL_TEXTURE0);
+            GL20.glUseProgram(previousProgram);
         }
     }
 
@@ -409,7 +404,7 @@ final class AtmosphericSkyGenerator {
         GL15.glBindBuffer(
                 GL21.GL_PIXEL_PACK_BUFFER,
                 readbackBuffers[readbackWriteIndex]);
-        GL13.glActiveTexture(
+        GlStateManager._activeTexture(
                 GL13.GL_TEXTURE0 + FINAL_SKY_TEXTURE_UNIT);
         GL11.glBindTexture(
                 GL11.GL_TEXTURE_2D,
@@ -424,7 +419,7 @@ final class AtmosphericSkyGenerator {
                 GL32.glFenceSync(
                         GL32.GL_SYNC_GPU_COMMANDS_COMPLETE,
                         0);
-        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        GlStateManager._activeTexture(GL13.GL_TEXTURE0);
         readbackWriteIndex =
                 (readbackWriteIndex + 1) % READBACK_RING_SIZE;
         pendingReadbacks++;

@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.WeakHashMap;
 import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * Reads the layer-level facts the capture path needs from a {@link RenderType}.
@@ -50,11 +50,11 @@ final class RenderLayerUtils {
 
     /**
      * Material identity for layers that draw without a texture. They have no
-     * {@link ResourceLocation} of their own, but the submitter keys materials and mesh
+     * {@link Identifier} of their own, but the submitter keys materials and mesh
      * pools by one, so they share this.
      */
-    static final ResourceLocation UNTEXTURED_LAYER_ID =
-            ResourceLocation.fromNamespaceAndPath("rtxremix", "untextured_entity_layer");
+    static final Identifier UNTEXTURED_LAYER_ID =
+            Identifier.fromNamespaceAndPath("rtxremix", "untextured_entity_layer");
 
     private RenderLayerUtils() {}
 
@@ -62,7 +62,7 @@ final class RenderLayerUtils {
      * Cache of RenderLayer -> capturable texture. Most RenderLayer instances are reused,
      * but weak keys avoid retaining dynamic layers created by mods or skin features.
      */
-    private static final Map<RenderType, Optional<ResourceLocation>> capturableTextureCache =
+    private static final Map<RenderType, Optional<Identifier>> capturableTextureCache =
             Collections.synchronizedMap(new WeakHashMap<>());
 
     /** Cache of RenderLayer -> streamed-per-frame verdict, weak-keyed like {@link #capturableTextureCache}. */
@@ -83,11 +83,11 @@ final class RenderLayerUtils {
      * @param layer the render layer (typically from an entity renderer)
      * @return the texture identifier to capture under, or empty to skip the layer
      */
-    static Optional<ResourceLocation> capturableTexture(RenderType layer) {
+    static Optional<Identifier> capturableTexture(RenderType layer) {
         return capturableTextureCache.computeIfAbsent(layer, RenderLayerUtils::capturableTextureUncached);
     }
 
-    private static Optional<ResourceLocation> capturableTextureUncached(RenderType layer) {
+    private static Optional<Identifier> capturableTextureUncached(RenderType layer) {
         if (layer instanceof RenderType.CompositeRenderType multiPhase
                 && multiPhase.state().depthTestState == RenderStateShard.NO_DEPTH_TEST) {
             return Optional.empty();
@@ -95,7 +95,7 @@ final class RenderLayerUtils {
         return extractTexture(layer);
     }
 
-    private static Optional<ResourceLocation> extractTexture(RenderType layer) {
+    private static Optional<Identifier> extractTexture(RenderType layer) {
         if (layer instanceof RenderType.CompositeRenderType multiPhase) {
             RenderType.CompositeState phases = multiPhase.state();
             RenderStateShard.EmptyTextureStateShard textureBase = phases.textureState;

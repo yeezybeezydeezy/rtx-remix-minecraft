@@ -15,7 +15,7 @@ import com.nvidia.rtxremix.minecraft.asset.RemixMaterialStore;
 import com.nvidia.rtxremix.minecraft.asset.RemixMesh;
 import com.nvidia.rtxremix.minecraft.asset.RemixMeshStore;
 import com.nvidia.rtxremix.minecraft.asset.RemixMeshSurface;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -77,8 +77,8 @@ public final class RemixBlockOutlinePass implements AutoCloseable {
      * preserved exactly at the point vanilla draws it.
      */
     public void captureBlockOutline(
-            WorldRenderContext context,
-            WorldRenderContext.BlockOutlineContext outline) {
+            LevelRenderContext context,
+            LevelRenderContext.BlockOutlineContext outline) {
         ClientLevel world = context.world();
         BlockPos blockPos = outline.blockPos();
         if (world == null

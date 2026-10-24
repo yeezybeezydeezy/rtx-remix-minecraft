@@ -35,12 +35,4 @@ public interface WorldRendererTerrainAccess {
      * already forces a rebuild when it re-enters.
      */
     void rtxremix$scheduleResidentSectionRebuild(int cx, int sy, int cz);
-
-    /**
-     * Forgets that column (cx, cz) was in the region snapshots of its eight
-     * neighbour columns' slots, because it unloaded or is being reloaded in
-     * place. Its next load then re-flags those slots instead of being dropped
-     * as already captured.
-     */
-    void rtxremix$onNeighbourColumnInvalidated(int cx, int cz);
 }

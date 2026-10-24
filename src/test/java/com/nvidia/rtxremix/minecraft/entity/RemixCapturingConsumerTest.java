@@ -23,7 +23,7 @@ import net.minecraft.client.renderer.texture.SpriteContents;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.metadata.animation.FrameSize;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceMetadata;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -168,14 +168,14 @@ class RemixCapturingConsumerTest {
     private static SpriteContents spriteContents(String id, String[] rows) {
         NativeImage image = new NativeImage(8, 8, false);
         for (int y = 0; y < 8; y++) {
-            for (int x = 0; x < 8; x++) image.setPixelRGBA(x, y, rows[y].charAt(x) == '#' ? 0xFF808080 : 0);
+            for (int x = 0; x < 8; x++) image.setPixelABGR(x, y, rows[y].charAt(x) == '#' ? 0xFF808080 : 0);
         }
-        return new SpriteContents(ResourceLocation.fromNamespaceAndPath("minecraft", id), new FrameSize(8, 8), image,
+        return new SpriteContents(Identifier.fromNamespaceAndPath("minecraft", id), new FrameSize(8, 8), image,
                 ResourceMetadata.EMPTY);
     }
 
     private static TextureAtlasSprite atlasSprite(SpriteContents contents) {
-        return new TextureAtlasSprite(ResourceLocation.fromNamespaceAndPath("minecraft", "textures/atlas/blocks.png"), contents, 64, 64, 16, 32) {};
+        return new TextureAtlasSprite(Identifier.fromNamespaceAndPath("minecraft", "textures/atlas/blocks.png"), contents, 64, 64, 16, 32) {};
     }
 
     /** Renders both full faces of an item card, as ItemRenderer does for a flat item. */

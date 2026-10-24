@@ -5,12 +5,17 @@
 package com.nvidia.rtxremix.minecraft.terrain.capture;
 
 import com.nvidia.rtxremix.minecraft.light.BlockLightRuleManager;
-import net.minecraft.client.renderer.block.BlockRenderDispatcher;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.client.renderer.block.BlockStateModelSet;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModel;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.SingleThreadedRandomSource;
+import org.joml.Vector3fc;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Samples the baked model of the block currently being meshed, so a block light
@@ -38,11 +43,13 @@ public final class ModelSampling implements BlockLightRuleManager.ModelSampler {
     /** Own random, so sampling cannot perturb the emitter's model randomisation. */
     private final SingleThreadedRandomSource random = new SingleThreadedRandomSource(0L);
 
-    private BlockRenderDispatcher blockRenderManager;
+    private final List<BlockStateModelPart> parts = new ArrayList<>();
+
+    private BlockStateModelSet blockModels;
     private BlockState state;
     private long seed;
 
-    private BakedModel model;
+    private BlockStateModel model;
     private boolean modelResolved;
 
     private float[] vertices = new float[3 * 256];
@@ -53,8 +60,8 @@ public final class ModelSampling implements BlockLightRuleManager.ModelSampler {
     private boolean centroidComputed;
 
     /** Rebinds this sampler to a new block and drops everything memoised. */
-    public void begin(BlockRenderDispatcher blockRenderManager, BlockState state, long seed) {
-        this.blockRenderManager = blockRenderManager;
+    public void begin(BlockStateModelSet blockModels, BlockState state, long seed) {
+        this.blockModels = blockModels;
         this.state = state;
         this.seed = seed;
         this.model = null;
@@ -95,29 +102,33 @@ public final class ModelSampling implements BlockLightRuleManager.ModelSampler {
 
         if (!modelResolved) {
             modelResolved = true;
-            model = (blockRenderManager != null && state != null)
-                    ? blockRenderManager.getBlockModel(state)
+            model = (blockModels != null && state != null)
+                    ? blockModels.get(state)
                     : null;
         }
         if (model == null) return;
 
-        for (Direction dir : DIRECTIONS) {
-            // Re-seed per direction exactly as the emission loop does, so a
-            // multi-variant model resolves to the same variant here as on screen.
-            random.setSeed(seed);
-            for (BakedQuad quad : model.getQuads(state, dir, random)) {
-                int[] vd = quad.getVertices();
-                ensureCapacity(vertexCount + 4);
-                for (int v = 0; v < 4; v++) {
-                    int off = v * 8;
-                    int w = vertexCount * 3;
-                    vertices[w] = Float.intBitsToFloat(vd[off]);
-                    vertices[w + 1] = Float.intBitsToFloat(vd[off + 1]);
-                    vertices[w + 2] = Float.intBitsToFloat(vd[off + 2]);
-                    vertexCount++;
+        // Seeded exactly as the emission loop seeds its part selection, so a
+        // multi-variant model resolves to the same variant here as on screen.
+        random.setSeed(seed);
+        parts.clear();
+        model.collectParts(random, parts);
+        for (BlockStateModelPart part : parts) {
+            for (Direction dir : DIRECTIONS) {
+                for (BakedQuad quad : part.getQuads(dir)) {
+                    ensureCapacity(vertexCount + 4);
+                    for (int v = 0; v < 4; v++) {
+                        Vector3fc position = quad.position(v);
+                        int w = vertexCount * 3;
+                        vertices[w] = position.x();
+                        vertices[w + 1] = position.y();
+                        vertices[w + 2] = position.z();
+                        vertexCount++;
+                    }
                 }
             }
         }
+        parts.clear();
     }
 
     private void ensureCapacity(int wantedVertices) {

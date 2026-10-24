@@ -105,7 +105,7 @@ public final class RemixFirstPersonPass implements AutoCloseable {
                 return;
             }
 
-            Camera camera = client.gameRenderer.getMainCamera();
+            Camera camera = client.gameRenderer.mainCamera();
             float fovScale = calculateFovScale(client, camera, tickDelta);
             setViewCorrection(viewCorrection, modelView, fovScale);
 
@@ -285,9 +285,9 @@ public final class RemixFirstPersonPass implements AutoCloseable {
      * camera space: +X right, +Y up, and -Z forward.
      */
     private static void setCameraToWorld(Camera camera, Transform transform) {
-        Vec3 pos = camera.getPosition();
-        float yawRad = (float) Math.toRadians(-camera.getYRot());
-        float pitchRad = (float) Math.toRadians(camera.getXRot());
+        Vec3 pos = camera.position();
+        float yawRad = (float) Math.toRadians(-camera.yRot());
+        float pitchRad = (float) Math.toRadians(camera.xRot());
 
         float forwardX = (float) (Math.sin(yawRad) * Math.cos(pitchRad));
         float forwardY = (float) (-Math.sin(pitchRad));

@@ -4,13 +4,14 @@
  */
 package com.nvidia.rtxremix.minecraft.mixin;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import com.nvidia.rtxremix.minecraft.RtxRemixMod;
 import com.nvidia.rtxremix.minecraft.input.RemixInputGate;
 import com.nvidia.rtxremix.minecraft.input.RemixKeyboardAccess;
 import net.minecraft.client.KeyboardHandler;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
-import org.lwjgl.glfw.GLFW;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -22,9 +23,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * Alt+X without Control toggles the overlay, and while its capture session is open every key
  * and character is withheld from Minecraft. Plain R toggles camera recording once an in-game
  * command has armed it, and = and - scrub time of day while recording. Injecting into
- * {@code Keyboard.onKey} runs this at GLFW key-event time, so the modifier mask is read the
- * instant the key is pressed. Matched shortcuts cancel the event so vanilla does not also
- * handle it.
+ * {@code KeyboardHandler.keyPress} runs this at SDL key-event time, so the modifier mask is
+ * read the instant the key is pressed. Matched shortcuts cancel the event so vanilla does not
+ * also handle it.
  */
 @Mixin(KeyboardHandler.class)
 public class KeyboardMixin implements RemixKeyboardAccess {
@@ -38,19 +39,15 @@ public class KeyboardMixin implements RemixKeyboardAccess {
     private long debugCrashKeyReportedCount;
 
     @Shadow
-    private boolean handledDebugKey;
+    private boolean usedDebugKeyAsModifier;
 
     @Inject(method = "keyPress", at = @At("HEAD"), cancellable = true)
-    private void rtxremix$onKey(long window, int key, int scancode, int action, int mods, CallbackInfo ci) {
+    private void rtxremix$onKey(long handle, int action, KeyEvent event, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
-        boolean altDown = action == GLFW.GLFW_PRESS
-                && key == GLFW.GLFW_KEY_X
-                && ((mods & GLFW.GLFW_MOD_ALT) != 0 || Screen.hasAltDown());
-        boolean controlDown = action == GLFW.GLFW_PRESS
-                && key == GLFW.GLFW_KEY_X
-                && ((mods & GLFW.GLFW_MOD_CONTROL) != 0 || Screen.hasControlDown());
+        int key = event.key();
+        boolean xPressed = action == InputConstants.PRESS && key == InputConstants.KEY_X;
         RemixInputGate.KeyDecision decision = RtxRemixMod.getRemixInputGate().onKey(
-                key, action, altDown, controlDown);
+                key, action, xPressed && event.hasAltDown(), xPressed && event.hasControlDown());
 
         if (decision == RemixInputGate.KeyDecision.BLOCK) {
             ci.cancel();
@@ -61,23 +58,23 @@ public class KeyboardMixin implements RemixKeyboardAccess {
             RtxRemixMod.toggleRemixMenu();
             return;
         }
-        if (client.screen != null
-                || (action != GLFW.GLFW_PRESS && action != GLFW.GLFW_REPEAT)) {
+        if (client.gui.screen() != null
+                || (action != InputConstants.PRESS && action != InputConstants.REPEAT)) {
             return;
         }
 
-        if (action == GLFW.GLFW_PRESS
-                && key == GLFW.GLFW_KEY_R
+        if (action == InputConstants.PRESS
+                && key == InputConstants.KEY_R
                 && RtxRemixMod.shouldHandlePlainPathRecordingShortcut()) {
             ci.cancel();
             RtxRemixMod.togglePathRecording();
-        } else if (RtxRemixMod.handleCameraTimeShortcut(key, action, mods)) {
+        } else if (RtxRemixMod.handleCameraTimeShortcut(key, action, event.modifiers())) {
             ci.cancel();
         }
     }
 
     @Inject(method = "charTyped", at = @At("HEAD"), cancellable = true)
-    private void rtxremix$onChar(long window, int codePoint, int mods, CallbackInfo ci) {
+    private void rtxremix$onChar(long handle, CharacterEvent event, CallbackInfo ci) {
         if (RtxRemixMod.getRemixInputGate().isCaptureSessionOpen()) {
             ci.cancel();
         }
@@ -88,6 +85,6 @@ public class KeyboardMixin implements RemixKeyboardAccess {
         debugCrashKeyTime = -1L;
         debugCrashKeyReportedTime = -1L;
         debugCrashKeyReportedCount = -1L;
-        handledDebugKey = false;
+        usedDebugKeyAsModifier = false;
     }
 }

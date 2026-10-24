@@ -7,7 +7,7 @@ package com.nvidia.rtxremix.minecraft.mixin;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.nvidia.rtxremix.minecraft.texture.AtlasAnimationForwarder;
 import net.minecraft.client.renderer.texture.SpriteContents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -18,7 +18,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(SpriteContents.class)
 public abstract class SpriteContentsUploadMixin {
 
-    @Shadow @Final private ResourceLocation name;
+    @Shadow @Final private Identifier name;
     @Shadow @Final int width;
     @Shadow @Final int height;
 

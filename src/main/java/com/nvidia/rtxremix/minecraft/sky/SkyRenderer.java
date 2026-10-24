@@ -46,9 +46,9 @@ import java.nio.ByteOrder;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.DimensionSpecialEffects;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
+import com.nvidia.rtxremix.minecraft.util.NativeImagePixels;
 
 /**
  * Manages sky rendering for RTX Remix.
@@ -72,10 +72,10 @@ public class SkyRenderer {
     private static final float OVERCAST_MEAN_G = 0.26890025f;
     private static final float OVERCAST_MEAN_B = 0.31064802f;
     private static final float WEATHER_UPDATE_DELTA = 1.0e-4f;
-    private static final ResourceLocation SUN_TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/environment/sun.png");
-    private static final ResourceLocation MOON_PHASES_TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/environment/moon_phases.png");
+    private static final Identifier SUN_TEXTURE =
+            Identifier.withDefaultNamespace("textures/environment/sun.png");
+    private static final Identifier MOON_PHASES_TEXTURE =
+            Identifier.withDefaultNamespace("textures/environment/moon_phases.png");
     private static final float CELESTIAL_DISTANCE = 100.0f;
     private static final float SUN_HALF_SIZE = 30.0f;
     private static final float MOON_HALF_SIZE = 20.0f;
@@ -225,7 +225,7 @@ public class SkyRenderer {
         }
 
         RemixAPI api = renderer.getRemixApi();
-        float[] fixedRadiance = fixedSkyRadiance(world.effects().skyType());
+        float[] fixedRadiance = fixedSkyRadiance(CelestialState.skyType(world));
         if (fixedRadiance == null) {
             renderAtmosphericSky(api, world, cameraPos, tickDelta);
         } else {
@@ -238,7 +238,7 @@ public class SkyRenderer {
      *
      * @return the constant, or null for a NORMAL sky, whose dome is the time-driven atmosphere
      */
-    static float[] fixedSkyRadiance(DimensionSpecialEffects.SkyType skyType) {
+    static float[] fixedSkyRadiance(CelestialState.SkyType skyType) {
         return switch (skyType) {
             case NORMAL -> null;
             case END -> END_SKY_RADIANCE;
@@ -256,7 +256,7 @@ public class SkyRenderer {
         float[] sunDirection;
         WeatherDomeState weather;
         try (ProfileScope ignored = ProfileScope.begin("Sky.Prepare")) {
-            skyAngle = world.getTimeOfDay(tickDelta);
+            skyAngle = CelestialState.timeOfDay(tickDelta);
             ConfLayerDriver confLayers = renderer.getConfLayerDriver();
             ConfLayerDriver.WeatherStrengths weatherStrengths =
                     confLayers != null && confLayers.isActive()
@@ -587,7 +587,7 @@ public class SkyRenderer {
 
         float weatherVisibility = Math.max(
                 minimumCelestialWeatherVisibility, 1.0f - clamp01(weatherOpacity));
-        float starsOpacity = starOpacity(world.getStarBrightness(tickDelta)) * weatherVisibility;
+        float starsOpacity = starOpacity(CelestialState.starBrightness(tickDelta)) * weatherVisibility;
         if (starsOpacity > 0.0f) {
             updateStarOpacity(starsOpacity);
             updateStarTransform(starTransform, cameraPos, skyAngle);
@@ -607,7 +607,7 @@ public class SkyRenderer {
         }
 
         if (moonOpacity > 0.0f) {
-            int moonPhase = world.getMoonPhase() & 7;
+            int moonPhase = CelestialState.moonPhase(tickDelta) & 7;
             updateCelestialTransform(
                     moonTransform,
                     cameraPos,
@@ -623,6 +623,11 @@ public class SkyRenderer {
             return true;
         }
         if (celestialInitializationFailed) {
+            return false;
+        }
+        float[] starVertices = VanillaStars.copyVertices();
+        if (starVertices.length == 0) {
+            // Vanilla has not built its sky renderer yet; try again next frame.
             return false;
         }
 
@@ -651,7 +656,7 @@ public class SkyRenderer {
                         maxV);
             }
 
-            starMeshAsset = createStarMesh(starMaterialAsset, getVanillaStarVertices());
+            starMeshAsset = createStarMesh(starMaterialAsset, starVertices);
             celestialBlendPNext = CELESTIAL_BLEND.allocNative(0);
             lastSunOpacity = 1.0f;
             lastMoonOpacity = 1.0f;
@@ -665,7 +670,7 @@ public class SkyRenderer {
         }
     }
 
-    private RemixTexture loadCelestialTexture(ResourceLocation textureId) throws IOException {
+    private RemixTexture loadCelestialTexture(Identifier textureId) throws IOException {
         var client = Minecraft.getInstance();
         var resource = client.getResourceManager().getResource(textureId)
                 .orElseThrow(() -> new IOException("Missing texture " + textureId));
@@ -679,7 +684,7 @@ public class SkyRenderer {
             pixels = new byte[width * height * 4];
             for (int y = 0; y < height; y++) {
                 for (int x = 0; x < width; x++) {
-                    int abgr = image.getPixelRGBA(x, y);
+                    int abgr = NativeImagePixels.abgr(image, x, y);
                     int index = (y * width + x) * 4;
                     pixels[index] = (byte) (abgr & 0xFF);
                     pixels[index + 1] = (byte) ((abgr >>> 8) & 0xFF);
@@ -821,14 +826,6 @@ public class SkyRenderer {
                 .setVertices(vertices)
                 .setIndices(indices);
         return RemixMeshStore.get().create(new RemixMesh(new RemixMeshSurface[]{surface}));
-    }
-
-    private static float[] getVanillaStarVertices() {
-        var worldRenderer = Minecraft.getInstance().levelRenderer;
-        if (!(worldRenderer instanceof WorldRendererStarAccess starAccess)) {
-            throw new IllegalStateException("WorldRenderer star capture is unavailable");
-        }
-        return starAccess.rtxremix$copyStarVertices();
     }
 
     private void drawCelestialMesh(RemixAPI api, RemixMesh mesh, Transform transform) {

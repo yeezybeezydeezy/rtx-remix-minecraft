@@ -47,7 +47,7 @@ import com.nvidia.rtxremix.minecraft.entity.RemixEntitySubmitter;
 import com.nvidia.rtxremix.minecraft.entity.RemixFirstPersonPass;
 import com.nvidia.rtxremix.minecraft.cloud.CloudRenderer;
 import it.unimi.dsi.fastutil.longs.LongSet;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -61,7 +61,8 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.material.FogType;
 import net.minecraft.world.phys.Vec3;
-import org.lwjgl.glfw.GLFWNativeWin32;
+import org.lwjgl.sdl.SDLProperties;
+import org.lwjgl.sdl.SDLVideo;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GLCapabilities;
 import org.slf4j.Logger;
@@ -227,9 +228,9 @@ public class RemixRenderer {
             lastCameraMediumHandle = Long.MIN_VALUE;
 
             Minecraft client = Minecraft.getInstance();
-            long glfwHandle = client.getWindow().getWindow();
-            
-            windowHandle = getHwndFromGlfw(glfwHandle);
+            long sdlWindow = client.getWindow().handle();
+
+            windowHandle = getHwndFromSdl(sdlWindow);
             
             if (windowHandle == 0) {
                 throw new RuntimeException("Failed to get native window handle");
@@ -273,14 +274,14 @@ public class RemixRenderer {
             // RTXREMIX_WINDOW_POS="x,y" moves the window before startup() so the
             // swapchain is created on the monitor that will display it (benchmarks
             // use this to target a specific monitor, e.g. a 4K panel at a negative
-            // desktop coordinate). Must run on the render thread, which owns GLFW.
+            // desktop coordinate). Must run on the render thread, which owns the window.
             String windowPos = System.getenv("RTXREMIX_WINDOW_POS");
             if (windowPos != null && !windowPos.isBlank()) {
                 String[] parts = windowPos.split(",");
                 try {
                     int x = Integer.parseInt(parts[0].trim());
                     int y = Integer.parseInt(parts[1].trim());
-                    org.lwjgl.glfw.GLFW.glfwSetWindowPos(glfwHandle, x, y);
+                    SDLVideo.SDL_SetWindowPosition(sdlWindow, x, y);
                     LOGGER.info("RTXREMIX_WINDOW_POS: moved window to ({}, {})", x, y);
                 } catch (RuntimeException e) {
                     LOGGER.warn("RTXREMIX_WINDOW_POS: could not apply '{}': {}", windowPos, e.getMessage());
@@ -496,10 +497,12 @@ public class RemixRenderer {
     }
     
     /**
-     * Gets the Win32 HWND from a GLFW window handle.
+     * Gets the Win32 HWND from an SDL window handle.
      */
-    private long getHwndFromGlfw(long glfwHandle) {
-        return GLFWNativeWin32.glfwGetWin32Window(glfwHandle);
+    private long getHwndFromSdl(long sdlWindow) {
+        int properties = SDLVideo.SDL_GetWindowProperties(sdlWindow);
+        return SDLProperties.SDL_GetPointerProperty(
+                properties, SDLVideo.SDL_PROP_WINDOW_WIN32_HWND_POINTER, 0L);
     }
     
     /**
@@ -558,7 +561,7 @@ public class RemixRenderer {
             Minecraft client = Minecraft.getInstance();
             if (client != null && client.levelRenderer != null) {
                 LongSet built = RtxRemixMod.builtSections(client);
-                client.levelRenderer.allChanged();
+                client.levelExtractor.allChanged();
                 RtxRemixMod.recaptureTerrainForRemix(client, built);
             }
             pendingTerrainRecaptureAfterTextureReload = false;
@@ -623,7 +626,7 @@ public class RemixRenderer {
     /**
      * Opens a fresh entity capture window for the world render that is starting.
      *
-     * <p>{@code WorldRenderEvents.END} does not fire during loading screens, so a
+     * <p>{@code LevelRenderEvents.END} does not fire during loading screens, so a
      * capture window can be opened and never closed. Resetting at the start of
      * every world render stops a dropped frame bleeding into the next one, and
      * opening the submitter's frame here (rather than in
@@ -784,8 +787,8 @@ public class RemixRenderer {
             }
             submitPendingParticleFrame();
 
-            Camera camera = client.gameRenderer.getMainCamera();
-            float tickDelta = client.getTimer().getGameTimeDeltaPartialTick(true);
+            Camera camera = client.gameRenderer.mainCamera();
+            float tickDelta = client.getDeltaTracker().getGameTimeDeltaPartialTick(true);
             particleFuture = startParticleRenderTask(tickDelta, ProfileScope.currentFrameIndex());
             
             perfTimer.begin(perfCamera);
@@ -795,7 +798,7 @@ public class RemixRenderer {
                 perfTimer.end(perfCamera);
             }
             
-            Vec3 cameraPos = camera.getPosition();
+            Vec3 cameraPos = camera.position();
 
             perfTimer.begin(perfLights);
             try (ProfileScope lightsScope = ProfileScope.begin("Lights")) {
@@ -1189,9 +1192,9 @@ public class RemixRenderer {
      */
     private void updateCamera(Camera camera, float tickDelta) {
         try {
-            Vec3 pos = camera.getPosition();
-            float pitch = camera.getXRot();
-            float yaw = camera.getYRot();
+            Vec3 pos = camera.position();
+            float pitch = camera.xRot();
+            float yaw = camera.yRot();
     
             float yawRad = (float) Math.toRadians(-yaw);
             float pitchRad = (float) Math.toRadians(pitch);
@@ -1443,8 +1446,8 @@ public class RemixRenderer {
      * the same frame.
      */
     public void captureBlockOutline(
-            WorldRenderContext context,
-            WorldRenderContext.BlockOutlineContext outline) {
+            LevelRenderContext context,
+            LevelRenderContext.BlockOutlineContext outline) {
         if (blockOutlinePass != null) {
             blockOutlinePass.captureBlockOutline(context, outline);
         }

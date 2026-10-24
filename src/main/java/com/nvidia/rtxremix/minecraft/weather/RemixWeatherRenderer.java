@@ -16,7 +16,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.ShaderInstance;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Quaternionf;
@@ -44,10 +44,10 @@ import java.util.List;
 public final class RemixWeatherRenderer {
     private static final float NEAR_PLANE = 0.05f;
     private static final float FAR_PLANE = 1000.0f;
-    private static final ResourceLocation RAIN_TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/environment/rain.png");
-    private static final ResourceLocation RAIN_SHADER =
-            ResourceLocation.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "rain_refraction");
+    private static final Identifier RAIN_TEXTURE =
+            Identifier.withDefaultNamespace("textures/environment/rain.png");
+    private static final Identifier RAIN_SHADER =
+            Identifier.fromNamespaceAndPath(RtxRemixCommonMod.MOD_ID, "rain_refraction");
 
     private static ShaderInstance rainShader;
 
@@ -86,7 +86,7 @@ public final class RemixWeatherRenderer {
                 FAR_PLANE);
     }
 
-    public void capture(MeshData buffer, ResourceLocation texture) {
+    public void capture(MeshData buffer, Identifier texture) {
         if (texture == null) {
             buffer.close();
             throw new IllegalStateException("Weather draw did not bind a texture");
@@ -113,7 +113,7 @@ public final class RemixWeatherRenderer {
         }
 
         Minecraft client = Minecraft.getInstance();
-        client.getMainRenderTarget().bindWrite(true);
+        client.gameRenderer.mainRenderTarget().bindWrite(true);
         try {
             if (depthSeeder == null) {
                 depthSeeder = new DepthSeeder();
@@ -290,7 +290,7 @@ public final class RemixWeatherRenderer {
         }
     }
 
-    private record DeferredDraw(MeshData buffer, ResourceLocation texture, boolean rain) {
+    private record DeferredDraw(MeshData buffer, Identifier texture, boolean rain) {
     }
 
     private static final class DepthSeeder {

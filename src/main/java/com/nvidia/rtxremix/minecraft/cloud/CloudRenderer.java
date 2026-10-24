@@ -33,8 +33,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import net.minecraft.client.CloudStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.phys.Vec3;
+import com.nvidia.rtxremix.minecraft.sky.CelestialState;
+import org.joml.Vector4fc;
+import com.nvidia.rtxremix.minecraft.util.NativeImagePixels;
 
 /**
  * Renders either deterministic Perlin-Worley clouds or the voxelized vanilla
@@ -48,8 +51,11 @@ import net.minecraft.world.phys.Vec3;
  * instead of publishing a mesh into the wrong scene.
  */
 public final class CloudRenderer {
-    private static final ResourceLocation VANILLA_CLOUD_TEXTURE =
-            ResourceLocation.withDefaultNamespace("textures/environment/clouds.png");
+    // Vanilla wraps its cloud scroll at 400 ticks per texel of its 256-texel cloud
+    // texture, so this period never shifts the clouds.
+    private static final long VANILLA_CLOUD_TICK_PERIOD = 256L * 400L;
+    private static final Identifier VANILLA_CLOUD_TEXTURE =
+            Identifier.withDefaultNamespace("textures/environment/clouds.png");
     static final int PALETTE_SIZE = 32;
     static final long PALETTE_SEED = 0x434C_4F55_4450_5546L;
     private static final long MAINTENANCE_INTERVAL_TICKS = 40L;
@@ -126,8 +132,10 @@ public final class CloudRenderer {
         }
 
         Minecraft client = Minecraft.getInstance();
-        float cloudHeight = world.effects().getCloudHeight();
-        if (client.options.getCloudsType() == CloudStatus.OFF
+        Vector4fc cloudColor = CelestialState.cloudColor(tickDelta);
+        float cloudHeight = CelestialState.cloudHeight(tickDelta);
+        if (client.options.getCloudStatus() == CloudStatus.OFF
+                || cloudColor.w() <= 0.0f
                 || Float.isNaN(cloudHeight)) {
             releaseResources();
             return;
@@ -135,14 +143,15 @@ public final class CloudRenderer {
         if (!shouldSuppressVanillaClouds()) {
             return;
         }
-        updateCloudColor(world.getCloudColor(tickDelta));
+        updateCloudColor(cloudColor);
 
         if (!proceduralClouds) {
             completedPaletteMeshes.clear();
             clouds.clear();
             visibleKeys.clear();
-            int cloudTicks =
-                    ((WorldRendererCloudAccess) client.levelRenderer).rtxremix$getCloudTicks();
+            // Vanilla scrolls its cloud texture by game time, wrapped at a whole number
+            // of texture periods.
+            long cloudTicks = world.getGameTime() % VANILLA_CLOUD_TICK_PERIOD;
             drawVanillaClouds(cameraPos, cloudHeight, cloudTicks + (double) tickDelta);
             return;
         }
@@ -391,7 +400,7 @@ public final class CloudRenderer {
                 for (int y = 0; y < vanillaTextureHeight; y++) {
                     for (int x = 0; x < vanillaTextureWidth; x++) {
                         vanillaOccupancy[y * vanillaTextureWidth + x] =
-                                ((image.getPixelRGBA(x, y) >>> 24) & 0xff) >= 128;
+                                ((NativeImagePixels.abgr(image, x, y) >>> 24) & 0xff) >= 128;
                     }
                 }
             }
@@ -515,8 +524,8 @@ public final class CloudRenderer {
         materialColor = cloudColor;
     }
 
-    private void updateCloudColor(Vec3 color) {
-        int packedColor = packCloudColor(color.x, color.y, color.z);
+    private void updateCloudColor(Vector4fc color) {
+        int packedColor = packCloudColor(color.x(), color.y(), color.z());
         cloudColor = packedColor;
         if (material == null || material.isDeleted() || materialColor == packedColor) {
             return;

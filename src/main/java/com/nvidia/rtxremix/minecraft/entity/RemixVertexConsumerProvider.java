@@ -13,7 +13,7 @@ import java.util.Map;
 import java.util.Optional;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * The {@link MultiBufferSource} every Remix capture pass renders into.
@@ -22,7 +22,7 @@ import net.minecraft.resources.ResourceLocation;
  * entity, the first-person model or a block entity is rendered for Remix. For each
  * {@link RenderType} requested via {@link #getBuffer(RenderType)}, it returns a
  * part-recording {@link RemixCapturingConsumer} that records vertices alongside the
- * layer's texture {@link ResourceLocation}.
+ * layer's texture {@link Identifier}.
  *
  * <h3>Usage per capture</h3>
  * <ol>
@@ -99,8 +99,8 @@ public class RemixVertexConsumerProvider implements MultiBufferSource {
             }
         }
 
-        Optional<ResourceLocation> texOpt = RenderLayerUtils.capturableTexture(layer);
-        ResourceLocation textureId;
+        Optional<Identifier> texOpt = RenderLayerUtils.capturableTexture(layer);
+        Identifier textureId;
         if (texOpt.isPresent()) {
             textureId = texOpt.get();
         } else if (RenderLayerUtils.isCapturableUntexturedLayer(layer)) {
@@ -156,7 +156,7 @@ public class RemixVertexConsumerProvider implements MultiBufferSource {
             this.renderLayer = renderLayer;
         }
 
-        public ResourceLocation textureId() { return consumer.getTextureId(); }
+        public Identifier textureId() { return consumer.getTextureId(); }
         public RenderType renderLayer() { return renderLayer; }
         public RemixCapturingConsumer consumer() { return consumer; }
         public int vertexCount() { return consumer.getVertexCount(); }

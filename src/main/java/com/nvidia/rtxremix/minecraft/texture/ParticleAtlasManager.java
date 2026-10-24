@@ -30,7 +30,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 
 /**
@@ -83,7 +83,7 @@ public class ParticleAtlasManager {
                 return;
             }
 
-            Map<ResourceLocation, TextureAtlasSprite> sprites = acc.getSprites();
+            Map<Identifier, TextureAtlasSprite> sprites = acc.getSprites();
             if (sprites == null || sprites.isEmpty()) {
                 LOGGER.warn("Particle atlas has no sprites, deferring init");
                 return;
@@ -113,13 +113,13 @@ public class ParticleAtlasManager {
             LabPBRConverter.VariantCache labPBRVariants = LabPBRConverter.buildVariantCache(rm);
 
             for (var entry : sprites.entrySet()) {
-                ResourceLocation spriteId = entry.getKey();
+                Identifier spriteId = entry.getKey();
                 TextureAtlasSprite sprite = entry.getValue();
                 int pixX = sprite.getX(), pixY = sprite.getY();
                 int pixW = sprite.contents().width();
                 int pixH = sprite.contents().height();
 
-                ResourceLocation texId = ResourceLocation.fromNamespaceAndPath(spriteId.getNamespace(),
+                Identifier texId = Identifier.fromNamespaceAndPath(spriteId.getNamespace(),
                         "particle/" + spriteId.getPath());
                 NativeImage nImg = labPBRVariants.loadVariant(texId, "_n");
                 NativeImage sImg = labPBRVariants.loadVariant(texId, "_s");
