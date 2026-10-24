@@ -6,7 +6,6 @@ package com.nvidia.rtxremix.minecraft.entity;
 
 import com.nvidia.rtxremix.minecraft.util.ClosestKHeap;
 import com.nvidia.rtxremix.minecraft.profiling.ProfileScope;
-import com.nvidia.rtxremix.minecraft.mixin.EntityRenderDispatcherAccessor;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.nvidia.rtxremix.minecraft.ClientViewDistance;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -23,8 +22,7 @@ import java.util.function.IntPredicate;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -32,6 +30,8 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 
 /**
  * Captures entity geometry for Remix and hands it to the submission layer.
@@ -95,6 +95,7 @@ public class RemixEntityPass {
             Boolean.getBoolean("rtxremix.debug.entityTypeSummary");
     private final Map<String, int[]> typeCounts = new HashMap<>();
     private final RecyclingMatrixStack sharedMatrices = new RecyclingMatrixStack();
+    private final RemixSubmitReplay replay = new RemixSubmitReplay();
     private final IdentityHashMap<EntityType<?>, String> entityTypeKeyCache = new IdentityHashMap<>();
     private final ClosestKHeap<Entity> entityHeap = new ClosestKHeap<>(MAX_ENTITIES);
     private final IntOpenHashSet capturedIds = new IntOpenHashSet(MAX_ENTITIES);
@@ -259,12 +260,8 @@ public class RemixEntityPass {
             return false;
         }
         long captureStart = System.nanoTime();
-        // Remix traces shadows from the scene lights, so vanilla's blob shadow
-        // quads have no consumer. Suppress them rather than capture and drop them.
-        boolean hadShadows =
-                ((EntityRenderDispatcherAccessor) dispatcher)
-                        .rtxremix$getRenderShadows();
-        dispatcher.setRenderShadow(false);
+        // Remix traces shadows from the scene lights; the submit replay drops vanilla's
+        // blob shadows rather than capturing them.
         EntityCaptureResult result;
         try {
             result = renderOneEntity(entity, dispatcher, tickDelta,
@@ -272,8 +269,6 @@ public class RemixEntityPass {
         } catch (Exception e) {
             LOGGER.error("Error capturing entity {}: {}", entity.getType(), e.getMessage());
             return true;
-        } finally {
-            dispatcher.setRenderShadow(hadShadows);
         }
         long captured = System.nanoTime();
         frameCaptureNanos += captured - captureStart;
@@ -718,8 +713,9 @@ public class RemixEntityPass {
     /**
      * Renders a single entity through vanilla's pipeline and captures the result.
      *
-     * <p>The entity is dispatched at the origin so the captured rigid transforms
-     * carry only model and pivot rotations. The world position rides on the Remix
+     * <p>The entity's render state is extracted and submitted at the origin, so the
+     * captured rigid transforms carry only model and pivot rotations, and the submits
+     * are replayed into the capture provider. The world position rides on the Remix
      * instance transform instead, so it is applied exactly once.
      */
     private EntityCaptureResult renderOneEntity(Entity entity,
@@ -729,15 +725,19 @@ public class RemixEntityPass {
         Vec3 entityPos = entity.getPosition(tickDelta);
         float yaw = Mth.lerp(tickDelta, entity.yRotO, entity.getYRot());
 
-        // Light is discarded by the capture; any value reaches the same result.
-        int light = LightTexture.FULL_BRIGHT;
+        EntityRenderState state = dispatcher.extractEntity(entity, tickDelta);
+        CameraRenderState camera = Minecraft.getInstance().gameRenderer.gameRenderState()
+                .levelRenderState.cameraRenderState;
 
         provider.beginEntity();
         EntityRenderContext ctx = EntityRenderContext.get();
 
         sharedMatrices.pushPose();
+        ctx.begin(true);
         try {
-            dispatcher.render(entity, 0.0, 0.0, 0.0, yaw, tickDelta, sharedMatrices, provider, light);
+            dispatcher.submit(state, camera, 0.0, 0.0, 0.0, sharedMatrices, replay.collector());
+            replay.replayInto(provider);
+            ctx.end();
         } finally {
             // Both reset even if a renderer threw mid-traversal, which skips the
             // dispatcher's RETURN hook: the identity root returns every pooled

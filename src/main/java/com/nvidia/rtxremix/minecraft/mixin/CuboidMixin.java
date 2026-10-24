@@ -48,9 +48,10 @@ public class CuboidMixin {
         // ItemRenderer builds, is left to vanilla.
         VertexConsumer target = vertexConsumer;
         TextureAtlasSprite sprite = null;
-        if (target instanceof SpriteCoordinateExpander wrapped) {
-            sprite = wrapped.sprite;
-            target = wrapped.delegate;
+        if (target instanceof SpriteCoordinateExpander wrapped
+                && wrapped.mapping() instanceof TextureAtlasSprite mapped) {
+            sprite = mapped;
+            target = wrapped.delegate();
         }
         if (!(target instanceof RemixCapturingConsumer consumer)) {
             return;

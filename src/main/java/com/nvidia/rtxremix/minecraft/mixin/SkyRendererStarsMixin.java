@@ -6,7 +6,7 @@ package com.nvidia.rtxremix.minecraft.mixin;
 
 import com.llamalad7.mixinextras.sugar.Local;
 import com.mojang.blaze3d.vertex.MeshData;
-import com.mojang.blaze3d.vertex.VertexFormatElement;
+import com.mojang.renderpearl.api.vertex.VertexFormatElement;
 import com.nvidia.rtxremix.minecraft.sky.VanillaStars;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -15,6 +15,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 
 /**
  * Hands the star positions vanilla bakes into its star buffer to the Remix sky, so Remix
@@ -32,12 +33,13 @@ public abstract class SkyRendererStarsMixin {
     private void rtxremix$captureStarVertices(
             CallbackInfoReturnable<?> cir, @Local MeshData mesh) {
         MeshData.DrawState parameters = mesh.drawState();
-        int positionOffset = parameters.format().getOffset(VertexFormatElement.POSITION);
-        if (positionOffset < 0) {
+        VertexFormatElement position = parameters.format().getElement(DefaultVertexFormat.POSITION_SEMANTIC_NAME);
+        if (position == null) {
             VanillaStars.publish(new float[0]);
             return;
         }
 
+        int positionOffset = position.offset();
         int vertexCount = parameters.vertexCount();
         int stride = parameters.format().getVertexSize();
         ByteBuffer vertices = mesh.vertexBuffer().duplicate().order(ByteOrder.nativeOrder());

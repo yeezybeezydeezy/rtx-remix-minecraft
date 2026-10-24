@@ -11,8 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -27,11 +26,11 @@ import net.minecraft.resources.Identifier;
  * <h3>Usage per capture</h3>
  * <ol>
  *   <li>Call {@link #beginEntity()} before rendering</li>
- *   <li>Pass this provider to the vanilla renderer</li>
+ *   <li>Replay the renderer's submits into this provider ({@link RemixSubmitReplay})</li>
  *   <li>Call {@link #endEntity()} after rendering; it returns all captured layers</li>
  * </ol>
  */
-public class RemixVertexConsumerProvider implements MultiBufferSource {
+public class RemixVertexConsumerProvider {
 
     /**
      * Consumers created during the current entity's render, keyed by RenderLayer, in
@@ -88,9 +87,8 @@ public class RemixVertexConsumerProvider implements MultiBufferSource {
         return resultBuffer;
     }
 
-    // ---- VertexConsumerProvider ----
+    // ---- Vertex consumers by render type ----
 
-    @Override
     public VertexConsumer getBuffer(RenderType layer) {
         // Reuse consumer for same layer within one entity (e.g. left arm + right arm)
         for (int i = 0; i < activeCount; i++) {
@@ -178,5 +176,7 @@ public class RemixVertexConsumerProvider implements MultiBufferSource {
         @Override public VertexConsumer setUv1(int u, int v) { return this; }
         @Override public VertexConsumer setUv2(int u, int v) { return this; }
         @Override public VertexConsumer setNormal(float x, float y, float z) { return this; }
+        @Override public VertexConsumer setLineWidth(float width) { return this; }
+        @Override public VertexConsumer setUv3(float u, float v) { return this; }
     }
 }

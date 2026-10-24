@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.UUID;
@@ -861,7 +862,7 @@ public final class CameraController {
                 return;
             }
             serverPlayer.teleportTo(serverPlayer.level(),
-                    shot.x(), shot.y(), shot.z(), shot.yaw(), shot.pitch());
+                    shot.x(), shot.y(), shot.z(), Set.of(), shot.yaw(), shot.pitch(), true);
             serverPlayer.setDeltaMovement(0.0, 0.0, 0.0);
         });
     }
@@ -1241,7 +1242,7 @@ public final class CameraController {
     private static boolean isPausedOrWillPause(Minecraft client) {
         MinecraftServer server = client.getSingleplayerServer();
         boolean screenPauses = client.gui.screen() != null && client.gui.screen().isPauseScreen();
-        boolean overlayPauses = client.gui.overlay() != null && client.gui.overlay().isPauseScreen();
+        boolean overlayPauses = client.gui.overlay() != null && client.gui.overlay().isPausing();
         return isPausedOrWillPause(
                 client.isPaused(),
                 client.hasSingleplayerServer(),

@@ -10,7 +10,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -54,7 +55,7 @@ import org.joml.Vector3fc;
 public final class HeldItemEffectsRenderer {
 
     private static final RenderType EFFECT_LAYER =
-            RenderType.entityTranslucentEmissive(TextureAtlas.LOCATION_PARTICLES);
+            RenderTypes.entityTranslucentEmissive(TextureAtlas.LOCATION_PARTICLES);
     private static final float TICKS_PER_SECOND = 20.0f;
     private static final int OPAQUE = 255;
     private static final int WHITE = 255;

@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
+import org.joml.Matrix4fc;
 
 /**
  * Thread-local context tracking whether a Remix capture is open and which rigid
@@ -174,7 +175,7 @@ public final class EntityRenderContext {
      * @param pose the 4x4 model-to-world transform at this cuboid
      * @return the bone index assigned to this cuboid
      */
-    public int pushBone(Matrix4f pose) {
+    public int pushBone(Matrix4fc pose) {
         int index = boneCounter++;
         if (index < boneTransforms.size()) {
             boneTransforms.get(index).set(pose);

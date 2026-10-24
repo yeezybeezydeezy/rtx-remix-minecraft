@@ -4,26 +4,32 @@
  */
 package com.nvidia.rtxremix.minecraft.entity;
 
-import com.mojang.blaze3d.vertex.VertexFormatElement;
+import com.mojang.renderpearl.api.pipeline.BlendFunction;
+import com.mojang.renderpearl.api.pipeline.ColorTargetState;
+import com.mojang.renderpearl.api.pipeline.CompareOp;
+import com.mojang.renderpearl.api.pipeline.DepthStencilState;
+import com.mojang.renderpearl.api.pipeline.RenderPipeline;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.resources.Identifier;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 import java.util.WeakHashMap;
-import net.minecraft.client.renderer.RenderStateShard;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.resources.Identifier;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 
 /**
  * Reads the layer-level facts the capture path needs from a {@link RenderType}.
  *
- * <p>A renderer requests its {@code VertexConsumer} by layer,
- * {@code provider.getBuffer(RenderLayer.getEntityCutout(textureId))}, so the
- * layer is where geometry and material meet and the one place material
- * identity is read. Its {@link RenderStateShard} state, reached through the access
- * widener, gives the texture the layer is submitted under, if any, the
- * {@link SurfaceMode} Remix shades with, and whether the geometry is streamed
- * afresh every frame; its draw mode gives the {@link Topology} and whether an
- * untextured layer carries geometry worth submitting at all.
+ * <p>A renderer submits its geometry under a render type, such as
+ * {@code RenderTypes.entityCutout(textureId)}, so the type is where geometry and
+ * material meet and the one place material identity is read. Its setup, reached
+ * through the access widener, gives the texture the type is submitted under, if
+ * any; its pipeline gives the {@link SurfaceMode} Remix shades with and whether the
+ * geometry is streamed afresh every frame; its topology gives the {@link Topology}
+ * and whether an untextured type carries geometry worth submitting at all.
  */
 final class RenderLayerUtils {
 
@@ -88,23 +94,16 @@ final class RenderLayerUtils {
     }
 
     private static Optional<Identifier> capturableTextureUncached(RenderType layer) {
-        if (layer instanceof RenderType.CompositeRenderType multiPhase
-                && multiPhase.state().depthTestState == RenderStateShard.NO_DEPTH_TEST) {
+        DepthStencilState depth = layer.pipeline().getDepthStencilState();
+        if (depth != null && depth.depthTest() == CompareOp.ALWAYS_PASS) {
             return Optional.empty();
         }
         return extractTexture(layer);
     }
 
     private static Optional<Identifier> extractTexture(RenderType layer) {
-        if (layer instanceof RenderType.CompositeRenderType multiPhase) {
-            RenderType.CompositeState phases = multiPhase.state();
-            RenderStateShard.EmptyTextureStateShard textureBase = phases.textureState;
-
-            if (textureBase instanceof RenderStateShard.TextureStateShard texture) {
-                return texture.cutoutTexture();
-            }
-        }
-        return Optional.empty();
+        RenderSetup.TextureBinding texture = layer.state.textures.get("Sampler0");
+        return texture != null ? Optional.of(texture.location()) : Optional.empty();
     }
 
     /**
@@ -112,7 +111,7 @@ final class RenderLayerUtils {
      * do not become triangles, such as lines.
      */
     static Optional<Topology> topology(RenderType layer) {
-        return switch (layer.mode()) {
+        return switch (layer.primitiveTopology()) {
             case QUADS -> Optional.of(Topology.QUADS);
             case TRIANGLE_STRIP -> Optional.of(Topology.TRIANGLE_STRIP);
             default -> Optional.empty();
@@ -121,8 +120,8 @@ final class RenderLayerUtils {
 
     /**
      * Whether a layer that draws without a texture still carries geometry worth
-     * submitting to Remix. In 1.21.1 the lead between a mob and its holder is the
-     * only such layer.
+     * submitting to Remix. The lead between a mob and its holder is the only such
+     * vanilla layer.
      *
      * <p>Two conditions, both about what the layer can actually shade with.
      * Vertex colour is the only surface detail such a layer has, so a layer
@@ -137,7 +136,7 @@ final class RenderLayerUtils {
         // capturableTexture declined must not re-enter capture through here.
         return extractTexture(layer).isEmpty()
                 && topology(layer).filter(t -> t == Topology.TRIANGLE_STRIP).isPresent()
-                && layer.format().getElements().contains(VertexFormatElement.COLOR);
+                && layer.format().contains(DefaultVertexFormat.COLOR_SEMANTIC_NAME);
     }
 
     /**
@@ -155,8 +154,9 @@ final class RenderLayerUtils {
     }
 
     private static boolean isStreamedPerFrameUncached(RenderType layer) {
-        boolean beaconBeamProgram = layer instanceof RenderType.CompositeRenderType multiPhase
-                && multiPhase.state().shaderState == RenderStateShard.RENDERTYPE_BEACON_BEAM_SHADER;
+        RenderPipeline pipeline = layer.pipeline();
+        boolean beaconBeamProgram = pipeline == RenderPipelines.BEACON_BEAM_OPAQUE
+                || pipeline == RenderPipelines.BEACON_BEAM_TRANSLUCENT;
         return classifyStreamedPerFrame(topology(layer).orElse(Topology.QUADS), beaconBeamProgram);
     }
 
@@ -165,9 +165,10 @@ final class RenderLayerUtils {
     }
 
     /**
-     * Converts Minecraft's render-phase state into the material behavior that
-     * Remix needs. This deliberately inspects phases rather than render-layer
-     * names so mod-created layers using the standard phases behave correctly.
+     * Converts Minecraft's render pipeline into the material behavior that Remix
+     * needs. This deliberately inspects the pipeline's programs and blending rather
+     * than render-type names so mod-created types using the standard pipelines
+     * behave correctly.
      *
      * <p>The block-breaking crack multiplies the surface under it, a blend Remix
      * has no material for. Its texels are either fully opaque grey or fully
@@ -175,20 +176,27 @@ final class RenderLayerUtils {
      * behaviour and it is classified as translucent.
      */
     static SurfaceMode surfaceMode(RenderType layer) {
-        if (!(layer instanceof RenderType.CompositeRenderType multiPhase)) {
-            return SurfaceMode.CUTOUT;
-        }
-
-        RenderType.CompositeState phases = multiPhase.state();
+        RenderPipeline pipeline = layer.pipeline();
+        BlendFunction blend = blendFunction(pipeline);
         return classifySurfaceMode(
-                phases.shaderState == RenderStateShard.RENDERTYPE_EYES_SHADER
-                        || phases.shaderState == RenderStateShard.RENDERTYPE_ENTITY_TRANSLUCENT_EMISSIVE_SHADER,
-                phases.transparencyState == RenderStateShard.ADDITIVE_TRANSPARENCY,
-                phases.transparencyState == RenderStateShard.TRANSLUCENT_TRANSPARENCY
-                        || phases.transparencyState == RenderStateShard.CRUMBLING_TRANSPARENCY,
-                phases.shaderState == RenderStateShard.RENDERTYPE_ENTITY_SOLID_SHADER,
-                phases.shaderState == RenderStateShard.RENDERTYPE_TEXT_SHADER
-                        || phases.shaderState == RenderStateShard.RENDERTYPE_TEXT_INTENSITY_SHADER);
+                pipeline == RenderPipelines.EYES
+                        || pipeline == RenderPipelines.ENTITY_TRANSLUCENT_EMISSIVE,
+                BlendFunction.ADDITIVE.equals(blend) || BlendFunction.LIGHTNING.equals(blend),
+                BlendFunction.TRANSLUCENT.equals(blend) || pipeline == RenderPipelines.CRUMBLING,
+                pipeline == RenderPipelines.ENTITY_SOLID,
+                pipeline == RenderPipelines.TEXT
+                        || pipeline == RenderPipelines.TEXT_GRAYSCALE
+                        || pipeline == RenderPipelines.TEXT_POLYGON_OFFSET
+                        || pipeline == RenderPipelines.TEXT_GRAYSCALE_POLYGON_OFFSET);
+    }
+
+    private static BlendFunction blendFunction(RenderPipeline pipeline) {
+        for (ColorTargetState target : pipeline.getColorTargetStates()) {
+            if (target != null) {
+                return target.blendFunction().orElse(null);
+            }
+        }
+        return null;
     }
 
     /**

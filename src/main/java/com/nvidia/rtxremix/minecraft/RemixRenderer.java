@@ -1405,6 +1405,11 @@ public class RemixRenderer {
         interopGlVk.signalDone();
     }
 
+    /** The GL side of the Remix interop, or null before the renderer initializes. */
+    public GlInterop getGlInterop() {
+        return interopGlVk;
+    }
+
     public int getInteropDepthTexture() {
         return interopGlVk.getDepthTexture();
     }

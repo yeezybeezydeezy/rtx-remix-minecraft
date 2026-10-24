@@ -18,7 +18,7 @@ public abstract class PlayerEntityNameMixin implements PlayerNameText {
     @Override
     public Component rtxremix$nameText() {
         Player self = (Player) (Object) this;
-        String name = self.getGameProfile().getName();
+        String name = self.getGameProfile().name();
         if (rtxremix$cachedText == null || !name.equals(rtxremix$cachedName)) {
             rtxremix$cachedName = name;
             rtxremix$cachedText = self.getName();

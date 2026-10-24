@@ -1162,6 +1162,7 @@ public class BenchmarkController {
                 benchmarkDir.toFile(),
                 shot.name() + ".png",
                 client.gameRenderer.mainRenderTarget(),
+                1,
                 text -> {
                     // Runs on the IO worker after the encode; the file is the
                     // verdict, not the message text.
@@ -1338,6 +1339,7 @@ public class BenchmarkController {
                 benchmarkDir.toFile(),
                 filename,
                 client.gameRenderer.mainRenderTarget(),
+                1,
                 text -> LOGGER.info("Screenshot: {}", text.getString())
         );
     }

@@ -146,6 +146,29 @@ public final class GlInterop {
         checkGlError("glBlitNamedFramebuffer");
     }
 
+    /**
+     * Blits the Remix colour image onto a framebuffer of the given size. The image's
+     * first row is its top, so the copy flips it onto OpenGL's bottom-up framebuffer.
+     */
+    public void blitColorTo(int destinationFbo, int destinationWidth, int destinationHeight) {
+        if (!colorImage.available()) {
+            return;
+        }
+        glBlitNamedFramebuffer(
+                colorImage.framebuffer(),
+                destinationFbo,
+                0,
+                0,
+                colorImage.width,
+                colorImage.height,
+                0,
+                destinationHeight,
+                destinationWidth,
+                0,
+                GL_COLOR_BUFFER_BIT,
+                GL_LINEAR);
+    }
+
     public int getTexture() {
         return colorImage.texture;
     }

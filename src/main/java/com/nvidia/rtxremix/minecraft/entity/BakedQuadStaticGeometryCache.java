@@ -12,6 +12,14 @@ package com.nvidia.rtxremix.minecraft.entity;
  */
 public interface BakedQuadStaticGeometryCache {
 
+    /**
+     * The quad packed as 1.21's baked vertex data: eight ints per vertex, holding
+     * position x, y, z and texture u, v as float bits at offsets 0, 1, 2, 4 and 5,
+     * white at 3, and the face normal as signed bytes at 7. Built on first use and
+     * shared, so callers must not write to it.
+     */
+    int[] rtxremix$vertexData();
+
     boolean rtxremix$matchesStaticGeometry(int[] vertexData,
                                             int texcoordBoundsMin,
                                             int texcoordBoundsMax);

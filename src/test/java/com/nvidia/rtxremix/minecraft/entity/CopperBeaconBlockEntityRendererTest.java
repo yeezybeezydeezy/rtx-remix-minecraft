@@ -161,17 +161,17 @@ class CopperBeaconBlockEntityRendererTest {
         assertEquals(
                 "rtx-remix-renderer:block/copper_beacon_lens",
                 CopperBeaconBlockEntityRenderer.lensTexture(true, 1.0f)
-                        .getTextureId()
+                        .texture()
                         .toString());
         assertEquals(
                 "rtx-remix-renderer:block/copper_beacon_lens_unlit",
                 CopperBeaconBlockEntityRenderer.lensTexture(false, 1.0f)
-                        .getTextureId()
+                        .texture()
                         .toString());
         assertEquals(
                 "rtx-remix-renderer:block/copper_beacon_lens_unlit",
                 CopperBeaconBlockEntityRenderer.lensTexture(true, 0.0f)
-                        .getTextureId()
+                        .texture()
                         .toString());
     }
 

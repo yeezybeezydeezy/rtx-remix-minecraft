@@ -455,7 +455,7 @@ public class RtxRemixMod implements ClientModInitializer {
                 if ((presses & 1) == 1) {
                     toggleRtx();
                     if (client.player != null) {
-                        client.player.sendSystemMessage(Component.literal("RTX Rendering: " + (rtxEnabled ? "ON" : "OFF")), true);
+                        client.player.sendOverlayMessage(Component.literal("RTX Rendering: " + (rtxEnabled ? "ON" : "OFF")));
                     }
                 }
             }
@@ -537,7 +537,7 @@ public class RtxRemixMod implements ClientModInitializer {
 
         // Zone discovery: server-thread scan of command blocks as chunks load.
         // The event only fires in-process (integrated server = single player).
-        ServerChunkEvents.CHUNK_LOAD.register((world, chunk) -> {
+        ServerChunkEvents.CHUNK_LOAD.register((world, chunk, generated) -> {
             if (renderer != null && Minecraft.getInstance().getSingleplayerServer() == world.getServer()) {
                 MarkerBlockScanner.scanChunk(renderer.getZoneRegistry(), chunk);
             }
@@ -618,7 +618,7 @@ public class RtxRemixMod implements ClientModInitializer {
             }
             mod.frameFailureLogged = false;
             if (remixTexture > 0 && mod.textureOverlay != null && isRtxEnabled()) {
-                mod.textureOverlay.render(remixTexture);
+                mod.textureOverlay.render(renderer.getGlInterop());
                 RemixWeatherRenderer weather = renderer.getWeatherRenderer();
                 if (weather != null) {
                     try (ProfileScope weatherScope = ProfileScope.begin("Weather")) {
@@ -2229,13 +2229,13 @@ public class RtxRemixMod implements ClientModInitializer {
 
     private static void sendCameraMessage(Minecraft client, String message) {
         if (client != null && client.player != null) {
-            client.player.sendOverlayMessage(Component.literal("[Camera] " + message));
+            client.player.sendSystemMessage(Component.literal("[Camera] " + message));
         }
     }
 
     private static void sendCameraActionBar(Minecraft client, String message) {
         if (client != null && client.player != null) {
-            client.player.displayClientMessage(Component.literal("[Camera] " + message));
+            client.player.sendOverlayMessage(Component.literal("[Camera] " + message));
         }
     }
 

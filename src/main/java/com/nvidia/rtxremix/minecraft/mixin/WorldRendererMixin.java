@@ -31,6 +31,26 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.QuadInstance;
+import com.nvidia.rtxremix.minecraft.RemixRenderer;
+import java.util.List;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.BlockBreakingRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Reroutes vanilla's world render into the Remix capture while a Remix world is
@@ -92,6 +112,103 @@ public abstract class WorldRendererMixin implements WorldRendererTerrainAccess {
         }
     }
 
+    /**
+     * Leaves entities to the Remix entity pass while Remix draws them. The pass captures
+     * every entity in range itself, visible or not, because a path tracer needs the ones
+     * vanilla culls for shadows and reflections, so vanilla's submit would only build
+     * GPU geometry nothing draws.
+     */
+    @WrapOperation(
+            method = "submitEntities",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/entity/EntityRenderDispatcher;submit(Lnet/minecraft/client/renderer/entity/state/EntityRenderState;Lnet/minecraft/client/renderer/state/level/CameraRenderState;DDDLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;)V"))
+    private void rtxremix$leaveEntitiesToRemix(
+            EntityRenderDispatcher dispatcher,
+            EntityRenderState state,
+            CameraRenderState camera,
+            double x,
+            double y,
+            double z,
+            PoseStack poseStack,
+            SubmitNodeCollector output,
+            Operation<Void> original) {
+        if (RtxRemixMod.isRemixWorldRendering() && RtxRemixMod.isEntitiesActive()) {
+            return;
+        }
+        original.call(dispatcher, state, camera, x, y, z, poseStack, output);
+    }
+
+    /**
+     * Captures block entities where vanilla submits them, instead of submitting them for
+     * OpenGL. The block entity's own renderer submits at the origin into the capture, so
+     * its model is evaluated once.
+     */
+    @WrapOperation(
+            method = "submitBlockEntities",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/blockentity/BlockEntityRenderDispatcher;submit(Lnet/minecraft/client/renderer/blockentity/state/BlockEntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V"))
+    private void rtxremix$captureBlockEntityInPlace(
+            BlockEntityRenderDispatcher dispatcher,
+            BlockEntityRenderState state,
+            PoseStack poseStack,
+            SubmitNodeCollector collector,
+            CameraRenderState camera,
+            Operation<Void> original) {
+        RtxRemixMod mod = RtxRemixMod.getInstance();
+        RemixRenderer renderer = mod == null ? null : mod.getRenderer();
+        ClientLevel level = Minecraft.getInstance().level;
+        BlockEntity blockEntity = level == null ? null : level.getBlockEntity(state.blockPos);
+        boolean captured = renderer != null
+                && blockEntity != null
+                && renderer.renderBlockEntityInPlace(blockEntity,
+                        (captureMatrices, captureCollector) ->
+                                original.call(dispatcher, state, captureMatrices, captureCollector, camera));
+        if (!captured) {
+            original.call(dispatcher, state, poseStack, collector, camera);
+        }
+    }
+
+    /** Captures a block's breaking crack where vanilla submits it, as a terrain decal. */
+    @WrapOperation(
+            method = "submitBlockDestroyAnimation",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/renderer/SubmitNodeCollector;submitBreakingBlockModel(Lcom/mojang/blaze3d/vertex/PoseStack;Ljava/util/List;IZ)V"))
+    private void rtxremix$captureBlockDamageInPlace(
+            SubmitNodeCollector collector,
+            PoseStack poseStack,
+            List<BlockStateModelPart> parts,
+            int progress,
+            boolean translucent,
+            Operation<Void> original,
+            @Local BlockBreakingRenderState state) {
+        RtxRemixMod mod = RtxRemixMod.getInstance();
+        RemixRenderer renderer = mod == null ? null : mod.getRenderer();
+        BlockPos pos = state.blockPos();
+        Vec3 offset = state.blockState().getOffset(pos);
+        boolean captured = renderer != null
+                && renderer.renderBlockDamageInPlace(pos, progress, (matrices, consumer) -> {
+                    matrices.translate(offset.x, offset.y, offset.z);
+                    QuadInstance instance = new QuadInstance();
+                    for (BlockStateModelPart part : parts) {
+                        for (Direction direction : rtxremix$ALL_FACES) {
+                            for (BakedQuad quad : part.getQuads(direction)) {
+                                consumer.putBakedQuad(matrices.last(), quad, instance);
+                            }
+                        }
+                    }
+                });
+        if (!captured) {
+            original.call(collector, poseStack, parts, progress, translucent);
+        }
+    }
+
+    private static final Direction[] rtxremix$ALL_FACES = {
+            null, Direction.UP, Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST
+    };
+
     @Override
     public LongSet rtxremix$builtSectionPositions() {
         LongOpenHashSet built = new LongOpenHashSet();
@@ -134,7 +251,7 @@ public abstract class WorldRendererMixin implements WorldRendererTerrainAccess {
             int index = worldChunk.getSectionIndexFromSectionY(sy);
             if (index >= 0 && index < worldChunk.getSectionsCount()
                     && !worldChunk.getSection(index).hasOnlyAir()
-                    && lightingProvider.lightOnInSection(SectionPos.of(cx, sy, cz))) {
+                    && lightingProvider.lightOnInColumn(SectionPos.asLong(cx, 0, cz))) {
                 loadedSections.add(section);
             }
         }

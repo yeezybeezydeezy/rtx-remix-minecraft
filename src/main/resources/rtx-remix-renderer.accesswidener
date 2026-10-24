@@ -62,3 +62,6 @@ accessible	field	net/minecraft/client/renderer/texture/SpriteContents$FrameInfo	
 #accessible	class	net/minecraft/client/renderer/chunk/SectionRenderDispatcher$SectionTaskResult
 #accessible	class	net/minecraft/client/renderer/chunk/SectionRenderDispatcher$RenderSection$RebuildTask
 accessible	field	net/minecraft/client/renderer/ViewArea	sections	Lnet/minecraft/client/RotatingSectionStorage;
+accessible	field	net/minecraft/client/renderer/rendertype/RenderType	state	Lnet/minecraft/client/renderer/rendertype/RenderSetup;
+accessible	field	net/minecraft/client/renderer/rendertype/RenderSetup	textures	Ljava/util/Map;
+accessible	class	net/minecraft/client/renderer/rendertype/RenderSetup$TextureBinding

@@ -17,12 +17,14 @@ import java.util.NoSuchElementException;
 import java.util.Map;
 import java.util.WeakHashMap;
 import net.minecraft.client.model.geom.ModelPart;
-import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.SpriteContents;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.Identifier;
+import com.mojang.blaze3d.vertex.QuadInstance;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
+import org.joml.Matrix4fc;
 
 /**
  * A {@link VertexConsumer} that captures vertex data for RTX Remix.
@@ -212,7 +214,7 @@ public class RemixCapturingConsumer implements VertexConsumer {
      * Registers {@code currentPose} as a new bone when it differs from the last pose
      * this consumer saw, and returns the bone index the next vertex belongs to.
      */
-    private int detectBoneChange(Matrix4f currentPose) {
+    private int detectBoneChange(Matrix4fc currentPose) {
         EntityRenderContext ctx = EntityRenderContext.get();
         if (!lastPoseValid || !lastPose.equals(currentPose)) {
             ctx.pushBone(currentPose);
@@ -263,7 +265,7 @@ public class RemixCapturingConsumer implements VertexConsumer {
      * stable between frames.
      */
     @Override
-    public VertexConsumer addVertex(Matrix4f matrix, float x, float y, float z) {
+    public VertexConsumer addVertex(Matrix4fc matrix, float x, float y, float z) {
         beginVertex(detectBoneChange(matrix));
         vx = x; vy = y; vz = z;
         return this;
@@ -326,6 +328,12 @@ public class RemixCapturingConsumer implements VertexConsumer {
         return this;
     }
 
+    /** The fourth texture-coordinate set carries nothing Remix shades with. */
+    @Override
+    public VertexConsumer setUv3(float u, float v) {
+        return this;
+    }
+
     @Override
     public VertexConsumer setLight(int uv) {
         return this;
@@ -337,6 +345,12 @@ public class RemixCapturingConsumer implements VertexConsumer {
     @Override
     public VertexConsumer setNormal(PoseStack.Pose matrix, float x, float y, float z) {
         return setNormal(x, y, z);
+    }
+
+    /** Lines are not captured, so a line width has nothing to apply to. */
+    @Override
+    public VertexConsumer setLineWidth(float width) {
+        return this;
     }
 
     @Override
@@ -626,18 +640,29 @@ public class RemixCapturingConsumer implements VertexConsumer {
     private final int[] quadColors = new int[4];
 
     /**
-     * Allocation-free replacement for the vanilla default, which allocates two
-     * arrays per quad; values and downstream calls are identical.
+     * Vanilla's item and block-model feature renderers write each baked quad through here
+     * with its tint and lighting in {@code instance}. The tint is uniform across an item
+     * quad, so the first vertex's colour stands for all four.
      */
     @Override
-    public void putBulkData(PoseStack.Pose matrixEntry, BakedQuad quad,
-                     float red, float green, float blue, float alpha, int light, int overlay) {
-        quadLightScratch[0] = light;
-        quadLightScratch[1] = light;
-        quadLightScratch[2] = light;
-        quadLightScratch[3] = light;
-        this.putBulkData(matrixEntry, quad, quadUnitBrightness, red, green, blue, alpha,
-                quadLightScratch, overlay, false);
+    public void putBakedQuad(PoseStack.Pose matrixEntry, BakedQuad quad, QuadInstance instance) {
+        int color = instance.getColor(0);
+        for (int v = 0; v < 4; v++) {
+            quadLightScratch[v] = instance.getLightCoords(v);
+        }
+        this.putBulkData(matrixEntry, quad, quadUnitBrightness,
+                ((color >> 16) & 0xFF) / 255.0f,
+                ((color >> 8) & 0xFF) / 255.0f,
+                (color & 0xFF) / 255.0f,
+                ((color >>> 24) & 0xFF) / 255.0f,
+                quadLightScratch, instance.overlayCoords(), false);
+    }
+
+    /** The glint is a shading effect Remix does not reproduce; the quad itself is captured. */
+    @Override
+    public void putBakedQuadWithGlint(PoseStack.Pose matrixEntry, BakedQuad quad, QuadInstance instance,
+                                      PoseStack.Pose sheetedDecalPose) {
+        putBakedQuad(matrixEntry, quad, instance);
     }
 
     /**
@@ -648,7 +673,7 @@ public class RemixCapturingConsumer implements VertexConsumer {
      * {@code vertex(float, float, float)}, bypassing bone detection. This override instead:
      * <ol>
      *   <li>Pushes the {@code MatrixStack.Entry} as a bone via {@link #detectBoneChange}</li>
-     *   <li>Reads LOCAL (model-space) positions directly from {@link BakedQuad#getVertices()}</li>
+     *   <li>Reads LOCAL (model-space) positions from the quad's packed vertex data</li>
      *   <li>Emits via {@link #acceptModelSpaceVertex}</li>
      * </ol>
      *
@@ -669,20 +694,20 @@ public class RemixCapturingConsumer implements VertexConsumer {
      * but the glass itself, which its material refracts through as a placed pane's does;
      * rebuilt, the card would be a bare frame.
      */
-    @Override
-    public void putBulkData(PoseStack.Pose matrixEntry, BakedQuad quad, float[] brightnesses,
+    private void putBulkData(PoseStack.Pose matrixEntry, BakedQuad quad, float[] brightnesses,
                      float red, float green, float blue, float alpha, int[] lights, int overlay,
                      boolean colorize) {
         // The pose is fixed for the whole quad, so resolve the pivot once here
         // rather than per vertex below.
         int quadBoneIndex = detectBoneChange(matrixEntry.pose());
 
-        int[] vd = quad.getVertices();
+        int[] vd = ((BakedQuadStaticGeometryCache) (Object) quad).rtxremix$vertexData();
+        TextureAtlasSprite quadSprite = quad.materialInfo().sprite();
         int boundsMin = 0;
         int boundsMax = 0;
-        if (quad.getSprite() != null) {
-            boundsMin = HardcodedVertex.packHalf2x16(quad.getSprite().getU0(), quad.getSprite().getV0());
-            boundsMax = HardcodedVertex.packHalf2x16(quad.getSprite().getU1(), quad.getSprite().getV1());
+        if (quadSprite != null) {
+            boundsMin = HardcodedVertex.packHalf2x16(quadSprite.getU0(), quadSprite.getV0());
+            boundsMax = HardcodedVertex.packHalf2x16(quadSprite.getU1(), quadSprite.getV1());
         }
 
         // Per-face normal: same for all 4 vertices on a BakedQuad (offset 7 of first vertex).
@@ -709,17 +734,17 @@ public class RemixCapturingConsumer implements VertexConsumer {
         for (int v = 0; v < 4; v++) {
             quadColors[v] = bakedQuadVertexColor(vd, v, brightnesses, red, green, blue, alpha, overlay, colorize);
         }
-        boolean cardFace = isFullCardFace(vd, quad.getDirection());
+        boolean cardFace = isFullCardFace(vd, quad.direction());
         int[] rects = cardFace
                 && EntityRenderContext.get().getBlockItemLayer() != BlockTextureManager.L_GLASS
-                ? cardFaceRects(quad.getSprite())
+                ? cardFaceRects(quadSprite)
                 : null;
         if (rects != null) {
-            emitCardFaceRects(vd, rects, quad.getSprite().contents(), quadColors,
+            emitCardFaceRects(vd, rects, quadSprite.contents(), quadColors,
                     fnx, fny, fnz, boundsMin, boundsMax, quadBoneIndex);
             return;
         }
-        if (quad instanceof BakedQuadStaticGeometryCache cache) {
+        if ((Object) quad instanceof BakedQuadStaticGeometryCache cache) {
             pendingBakedQuadStart = vertexCount;
             pendingBakedQuadCache = cache;
             pendingBakedQuadVertexData = vd;
@@ -1253,16 +1278,16 @@ public class RemixCapturingConsumer implements VertexConsumer {
     public void emitCuboidGeometry(ModelPart.Polygon[] sides, int color, int boneIndex, TextureAtlasSprite sprite,
                                    float shellExpand) {
         for (ModelPart.Polygon quad : sides) {
-            float qnx = quad.normal.x();
-            float qny = quad.normal.y();
-            float qnz = quad.normal.z();
-            for (ModelPart.Vertex vertex : quad.vertices) {
-                float u = sprite == null ? vertex.u : sprite.getU(vertex.u);
-                float v = sprite == null ? vertex.v : sprite.getV(vertex.v);
+            float qnx = quad.normal().x();
+            float qny = quad.normal().y();
+            float qnz = quad.normal().z();
+            for (ModelPart.Vertex vertex : quad.vertices()) {
+                float u = sprite == null ? vertex.u() : sprite.getU(vertex.u());
+                float v = sprite == null ? vertex.v() : sprite.getV(vertex.v());
                 acceptModelSpaceVertex(
-                        vertex.pos.x / 16f + qnx * shellExpand,
-                        vertex.pos.y / 16f + qny * shellExpand,
-                        vertex.pos.z / 16f + qnz * shellExpand,
+                        vertex.worldX() + qnx * shellExpand,
+                        vertex.worldY() + qny * shellExpand,
+                        vertex.worldZ() + qnz * shellExpand,
                         color,
                         u, v,
                         qnx, qny, qnz,
