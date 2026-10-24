@@ -8,8 +8,11 @@ import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.nvidia.rtxremix.minecraft.RemixRenderer;
 import com.nvidia.rtxremix.minecraft.RtxRemixMod;
 import com.nvidia.rtxremix.minecraft.UnfocusedFramerateLimit;
+import com.mojang.blaze3d.platform.FramerateLimitTracker;
 import net.minecraft.client.Minecraft;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 
 /**
@@ -19,19 +22,23 @@ import org.spongepowered.asm.mixin.injection.At;
  * the limit is left to vanilla too.
  *
  * <p>Minecraft's render loop waits for input only inside
- * {@code glfwWaitEventsTimeout}, which {@code RenderSystem.limitDisplayFPS}
- * reaches only when a frame finishes inside the cap's budget. At Unlimited, or
+ * {@code FramerateLimiter.limitDisplayFPS}, which waits only when a frame
+ * finishes inside the cap's budget. At Unlimited, or
  * at any cap the frame rate does not reach, the loop never waits, and with the
  * Remix present path Windows then marks an unfocused window as not responding.
  * {@code rtx.conf} enables {@code rtx.enableInputQueuePing}, which keeps the
  * window responsive at every setting.
  */
-@Mixin(Minecraft.class)
+@Mixin(FramerateLimitTracker.class)
 public abstract class UnfocusedFramerateMixin {
+
+    @Shadow
+    @Final
+    private Minecraft minecraft;
 
     @ModifyReturnValue(method = "getFramerateLimit()I", at = @At("RETURN"))
     private int rtxremix$capWhileUnfocused(int limit) {
-        if (((Minecraft) (Object) this).isWindowActive()) {
+        if (minecraft.isWindowActive()) {
             return limit;
         }
         // A benchmark measures renderer throughput and must not be throttled

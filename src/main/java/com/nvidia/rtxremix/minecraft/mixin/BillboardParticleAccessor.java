@@ -18,6 +18,13 @@ public interface BillboardParticleAccessor {
     @Accessor("sprite")
     TextureAtlasSprite getSprite();
 
+    @Accessor("rCol") float getRed();
+    @Accessor("gCol") float getGreen();
+    @Accessor("bCol") float getBlue();
+    @Accessor("alpha") float getAlpha();
+    @Accessor("roll") float getAngle();
+    @Accessor("oRoll") float getPrevAngle();
+
     @Invoker("getLayer")
     SingleQuadParticle.Layer invokeGetLayer();
 

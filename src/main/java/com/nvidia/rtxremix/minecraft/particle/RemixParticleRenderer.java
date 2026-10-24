@@ -187,8 +187,8 @@ public class RemixParticleRenderer {
                 // Alpha stays the particle's own; a held puff is drawn at a lower
                 // alpha, see HeldItemSmoke.OPACITY for why the two are not one value.
                 int color = ParticleTint.isSoot(particle)
-                        ? packColor(ParticleTint.SOOT_GREY, ParticleTint.SOOT_GREY, ParticleTint.SOOT_GREY, pa.getAlpha())
-                        : packColor(pa.getRed(), pa.getGreen(), pa.getBlue(), pa.getAlpha());
+                        ? packColor(ParticleTint.SOOT_GREY, ParticleTint.SOOT_GREY, ParticleTint.SOOT_GREY, billboard.getAlpha())
+                        : packColor(billboard.getRed(), billboard.getGreen(), billboard.getBlue(), billboard.getAlpha());
                 writeParticleQuad(bucket.vertexBuffer, slot, pa, billboard,
                         tickDelta, billboardBasis, u0, v0, u1, v1, color, boundsMin, boundsMax);
                 bucket.dirty = true;
@@ -396,7 +396,7 @@ public class RemixParticleRenderer {
         double py = Mth.lerp(tickDelta, pa.getPrevPosY(), pa.getY());
         double pz = Mth.lerp(tickDelta, pa.getPrevPosZ(), pa.getZ());
 
-        float angle = Mth.lerp(tickDelta, pa.getPrevAngle(), pa.getAngle());
+        float angle = Mth.lerp(tickDelta, ba.getPrevAngle(), ba.getAngle());
         float scale = ba.getScale();
         float cosA = Mth.cos(angle);
         float sinA = Mth.sin(angle);
