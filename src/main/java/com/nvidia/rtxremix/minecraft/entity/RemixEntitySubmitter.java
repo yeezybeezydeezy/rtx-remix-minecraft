@@ -73,6 +73,7 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import com.nvidia.rtxremix.minecraft.util.NativeImagePixels;
+import com.nvidia.rtxremix.minecraft.util.SpritePixels;
 
 /**
  * Converts {@link RemixEntityPass.EntityCaptureResult} into RTX Remix API calls.
@@ -2320,8 +2321,8 @@ public class RemixEntitySubmitter {
             for (Map.Entry<Identifier, TextureAtlasSprite> entry : sprites.entrySet()) {
                 Identifier spriteId = entry.getKey();
                 TextureAtlasSprite sprite = entry.getValue();
-                int x = sprite.getX();
-                int y = sprite.getY();
+                int x = SpritePixels.x(sprite);
+                int y = SpritePixels.y(sprite);
                 int spriteW = sprite.contents().width();
                 int spriteH = sprite.contents().height();
                 NativeImage nImg = loadVariant(rm, spriteId, "_n");

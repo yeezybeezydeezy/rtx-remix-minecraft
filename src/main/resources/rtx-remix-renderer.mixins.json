@@ -41,6 +41,7 @@
         "SpriteAtlasTextureMixin",
         "SpriteContentsAccessor",
         "SpriteAnimationStateMixin",
+        "TextureAtlasSpriteAccessor",
         "TextureAtlasSpriteAnimationMixin",
         "TextureManagerMixin",
         "ThreadExecutorMixin",

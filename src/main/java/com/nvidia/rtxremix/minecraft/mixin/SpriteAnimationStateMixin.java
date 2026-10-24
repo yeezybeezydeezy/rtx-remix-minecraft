@@ -7,6 +7,7 @@ package com.nvidia.rtxremix.minecraft.mixin;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.nvidia.rtxremix.minecraft.texture.AnimatedSpriteOwner;
 import com.nvidia.rtxremix.minecraft.texture.AtlasAnimationForwarder;
+import com.nvidia.rtxremix.minecraft.util.SpritePixels;
 import net.minecraft.client.renderer.texture.SpriteContents;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import org.spongepowered.asm.mixin.Final;
@@ -60,7 +61,7 @@ public abstract class SpriteAnimationStateMixin implements AnimatedSpriteOwner {
         long pixelPtr = basePtr + ((long) srcY * imgWidth + srcX) * 4;
         int rowPitch = imgWidth * 4;
 
-        AtlasAnimationForwarder.addPatch(contents.name(), sprite.getX(), sprite.getY(), srcX, srcY,
+        AtlasAnimationForwarder.addPatch(contents.name(), SpritePixels.x(sprite), SpritePixels.y(sprite), srcX, srcY,
                                          width, height, imgWidth, imgHeight, pixelPtr, rowPitch);
     }
 }

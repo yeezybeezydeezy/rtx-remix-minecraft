@@ -46,6 +46,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import com.nvidia.rtxremix.minecraft.util.NativeImagePixels;
+import com.nvidia.rtxremix.minecraft.util.SpritePixels;
 
 /**
  * Per-sprite texture and material management for Minecraft's block atlas.
@@ -173,7 +174,7 @@ public class BlockTextureManager {
         SpriteEntry(int i, Identifier id, TextureAtlasSprite s) {
             this.index = i; this.id = id;
             u0 = s.getU0(); v0 = s.getV0(); u1 = s.getU1(); v1 = s.getV1();
-            pixX = s.getX(); pixY = s.getY();
+            pixX = SpritePixels.x(s); pixY = SpritePixels.y(s);
             SpriteContents contents = s.contents();
             pixW = contents.width(); pixH = contents.height();
             transparentPixels = scanTransparency(contents, pixW, pixH);
@@ -1032,7 +1033,7 @@ public class BlockTextureManager {
         for (TextureAtlasSprite sprite : acc.getSprites().values()) {
             NativeImage img = ((SpriteContentsAccessor) sprite.contents()).getImage();
             if (img == null) continue;
-            int sx = sprite.getX(), sy = sprite.getY();
+            int sx = SpritePixels.x(sprite), sy = SpritePixels.y(sprite);
             int sw = sprite.contents().width(), sh = sprite.contents().height();
             for (int y = 0; y < sh; y++)
                 for (int x = 0; x < sw; x++) {

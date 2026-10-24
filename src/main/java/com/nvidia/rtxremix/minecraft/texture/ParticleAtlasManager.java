@@ -18,6 +18,7 @@ import com.nvidia.rtxremix.RemixAPI;
 import com.nvidia.rtxremix.RemixException;
 import com.nvidia.rtxremix.TextureFormat;
 import com.nvidia.rtxremix.TexturePurpose;
+import com.nvidia.rtxremix.minecraft.util.SpritePixels;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -115,7 +116,7 @@ public class ParticleAtlasManager {
             for (var entry : sprites.entrySet()) {
                 Identifier spriteId = entry.getKey();
                 TextureAtlasSprite sprite = entry.getValue();
-                int pixX = sprite.getX(), pixY = sprite.getY();
+                int pixX = SpritePixels.x(sprite), pixY = SpritePixels.y(sprite);
                 int pixW = sprite.contents().width();
                 int pixH = sprite.contents().height();
 
