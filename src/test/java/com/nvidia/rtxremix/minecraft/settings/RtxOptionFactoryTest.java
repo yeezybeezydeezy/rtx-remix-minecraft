@@ -4,8 +4,6 @@
  */
 package com.nvidia.rtxremix.minecraft.settings;
 
-import net.minecraft.client.option.SimpleOption;
-import net.minecraft.text.TranslatableTextContent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -13,11 +11,15 @@ import org.junit.jupiter.params.provider.CsvSource;
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.regex.Pattern;
+import net.minecraft.client.OptionInstance;
+import net.minecraft.network.chat.contents.TranslatableContents;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import RtxSetting;
 
 class RtxOptionFactoryTest {
 
@@ -39,7 +41,7 @@ class RtxOptionFactoryTest {
                 min, max, min, () -> min, v -> { });
     }
 
-    private static SimpleOption<?> toOption(RtxSetting<?> setting) {
+    private static OptionInstance<?> toOption(RtxSetting<?> setting) {
         return RtxOptionFactory.toOption(setting);
     }
 
@@ -66,11 +68,11 @@ class RtxOptionFactoryTest {
     void proceduralCloudToggleUsesCloudStyleNames() {
         assertEquals(
                 "rtxremix.settings.value.procedural",
-                ((TranslatableTextContent) RtxOptionFactory.booleanValueText(
+                ((TranslatableContents) RtxOptionFactory.booleanValueText(
                         RtxOptionFactory.PROCEDURAL_CLOUDS_ID, true).getContent()).getKey());
         assertEquals(
                 "rtxremix.settings.value.classic",
-                ((TranslatableTextContent) RtxOptionFactory.booleanValueText(
+                ((TranslatableContents) RtxOptionFactory.booleanValueText(
                         RtxOptionFactory.PROCEDURAL_CLOUDS_ID, false).getContent()).getKey());
     }
 
@@ -103,9 +105,9 @@ class RtxOptionFactoryTest {
         assertEquals(26, RtxOptionFactory.sliderValueFromInt(framerate, 260));
 
         assertEquals("options.framerateLimit.max",
-                ((TranslatableTextContent) RtxOptionFactory.intValueText(id, 260)
+                ((TranslatableContents) RtxOptionFactory.intValueText(id, 260)
                         .getContent()).getKey());
-        TranslatableTextContent capped = (TranslatableTextContent)
+        TranslatableContents capped = (TranslatableContents)
                 RtxOptionFactory.intValueText(id, 120).getContent();
         assertEquals("options.framerate", capped.getKey());
         assertEquals(120, capped.getArgs()[0]);
@@ -139,17 +141,17 @@ class RtxOptionFactoryTest {
 
     @Test
     void immediateSliderPolicyPreservesTheOriginalCallbacks() {
-        var callbacks = SimpleOption.DoubleSliderCallbacks.INSTANCE;
+        var callbacks = OptionInstance.UnitDouble.INSTANCE;
 
         assertTrue(callbacks.applyValueImmediately());
         assertSame(callbacks, RtxOptionFactory.sliderApplyPolicy(callbacks, true));
     }
 
-    private static SimpleOption.SliderCallbacks<?> sliderCallbacks(SimpleOption<?> option) {
+    private static OptionInstance.SliderableValueSet<?> sliderCallbacks(OptionInstance<?> option) {
         try {
-            Field callbacksField = SimpleOption.class.getDeclaredField("callbacks");
+            Field callbacksField = OptionInstance.class.getDeclaredField("callbacks");
             callbacksField.setAccessible(true);
-            return (SimpleOption.SliderCallbacks<?>) callbacksField.get(option);
+            return (OptionInstance.SliderableValueSet<?>) callbacksField.get(option);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError("Could not inspect SimpleOption callbacks", e);
         }
@@ -193,7 +195,7 @@ class RtxOptionFactoryTest {
     void zeroRendersAsAutoForBothDistanceSliders() {
         for (String id : List.of("dist.entity", "dist.light")) {
             assertEquals("rtxremix.settings.value.auto",
-                    ((TranslatableTextContent) RtxOptionFactory.intValueText(id, 0).getContent()).getKey(), id);
+                    ((TranslatableContents) RtxOptionFactory.intValueText(id, 0).getContent()).getKey(), id);
         }
         assertEquals("7", RtxOptionFactory.intValueText("dist.entity", 7).getString());
         assertEquals("0", RtxOptionFactory.intValueText("light.reach", 0).getString(),

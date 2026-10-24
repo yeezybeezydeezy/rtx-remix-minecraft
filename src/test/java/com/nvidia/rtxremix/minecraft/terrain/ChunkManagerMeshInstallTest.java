@@ -27,6 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import TerrainAssetRetirementQueue;
+import TerrainState;
+
 class ChunkManagerMeshInstallTest {
 
     @Test

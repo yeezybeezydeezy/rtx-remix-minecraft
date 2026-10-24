@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import RtxSetting;
 import com.nvidia.rtxremix.ErrorCode;
 import com.nvidia.rtxremix.RemixException;
 import java.util.HashMap;

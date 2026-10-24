@@ -5,7 +5,7 @@
 package com.nvidia.rtxremix.minecraft.entity;
 
 import com.nvidia.rtxremix.minecraft.texture.BlockTextureManager;
-import net.minecraft.util.Hand;
+import net.minecraft.world.InteractionHand;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import EntityRenderContext;
 
 class EntityRenderContextTest {
 
@@ -50,7 +52,7 @@ class EntityRenderContextTest {
     @Test
     void depthZeroBeginResetsBonesAndItemState() {
         // State written outside any boundary must not leak into the next capture.
-        context.setActiveHand(Hand.MAIN_HAND);
+        context.setActiveHand(InteractionHand.MAIN_HAND);
         context.setBlockItemLayer(BlockTextureManager.L_GLASS);
         context.pushBone(new Matrix4f());
 

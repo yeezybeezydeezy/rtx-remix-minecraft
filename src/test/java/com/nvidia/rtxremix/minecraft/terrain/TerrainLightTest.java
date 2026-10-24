@@ -7,6 +7,7 @@ package com.nvidia.rtxremix.minecraft.terrain;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import TerrainLight;
 import com.nvidia.rtxremix.minecraft.asset.RemixLight;
 import com.nvidia.rtxremix.minecraft.light.LightPower;
 import org.junit.jupiter.api.Test;

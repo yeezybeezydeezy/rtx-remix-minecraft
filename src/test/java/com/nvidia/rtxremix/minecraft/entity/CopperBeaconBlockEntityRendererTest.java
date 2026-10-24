@@ -6,16 +6,16 @@ package com.nvidia.rtxremix.minecraft.entity;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.nvidia.rtxremix.minecraft.block.CopperBeaconPose;
-import net.minecraft.client.model.ModelPart;
-import net.minecraft.client.render.model.ModelRotation;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.Direction;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.resources.model.BlockModelRotation;
+import net.minecraft.core.Direction;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumMap;
@@ -74,7 +74,7 @@ class CopperBeaconBlockEntityRendererTest {
                 .getLensTexturedModelData()
                 .createModel()
                 .getChild("lens");
-        MatrixStack matrices = new MatrixStack();
+        PoseStack matrices = new PoseStack();
         Vector3f headDirection = new Vector3f();
         Vector3f lensDirection = new Vector3f();
         CopperBeaconPose.Pose pose = new CopperBeaconPose.Pose();
@@ -83,28 +83,28 @@ class CopperBeaconBlockEntityRendererTest {
                 if (mount.getAxis() == forward.getAxis()) {
                     continue;
                 }
-                matrices.push();
-                matrices.multiply(
+                matrices.pushPose();
+                matrices.mulPose(
                         CopperBeaconBlockEntityRenderer.mountingRotation(mount, forward));
                 for (float yaw : angles) {
                     for (float pitch : angles) {
                         CopperBeaconPose.evaluate(mount, forward, yaw, pitch, pose);
                         CopperBeaconBlockEntityRenderer.applyArticulation(yoke, head, lens, pose);
 
-                        matrices.push();
-                        yoke.rotate(matrices);
-                        head.rotate(matrices);
-                        matrices.peek().getPositionMatrix()
+                        matrices.pushPose();
+                        yoke.translateAndRotate(matrices);
+                        head.translateAndRotate(matrices);
+                        matrices.last().pose()
                                 .transformDirection(headDirection.set(0.0f, 0.0f, -1.0f))
                                 .normalize();
-                        matrices.pop();
+                        matrices.popPose();
 
-                        matrices.push();
-                        lens.rotate(matrices);
-                        matrices.peek().getPositionMatrix()
+                        matrices.pushPose();
+                        lens.translateAndRotate(matrices);
+                        matrices.last().pose()
                                 .transformDirection(lensDirection.set(0.0f, 0.0f, -1.0f))
                                 .normalize();
-                        matrices.pop();
+                        matrices.popPose();
                         String sample = "mount=" + mount
                                 + ", forward=" + forward
                                 + ", yaw=" + yaw
@@ -114,7 +114,7 @@ class CopperBeaconBlockEntityRendererTest {
                         assertVector(pose.direction(), lensDirection, "lens " + sample);
                     }
                 }
-                matrices.pop();
+                matrices.popPose();
             }
         }
 
@@ -138,12 +138,12 @@ class CopperBeaconBlockEntityRendererTest {
 
         CopperBeaconBlockEntityRenderer.applyArticulation(yoke, head, lens, pose);
 
-        assertEquals(pose.modelYawRadians(), yoke.yaw, EPSILON);
-        assertEquals(0.0f, yoke.pitch, EPSILON);
-        assertEquals(0.0f, head.yaw, EPSILON);
-        assertEquals(pose.modelPitchRadians(), head.pitch, EPSILON);
-        assertEquals(pose.modelYawRadians(), lens.yaw, EPSILON);
-        assertEquals(head.pitch, lens.pitch, EPSILON);
+        assertEquals(pose.modelYawRadians(), yoke.yRot, EPSILON);
+        assertEquals(0.0f, yoke.xRot, EPSILON);
+        assertEquals(0.0f, head.yRot, EPSILON);
+        assertEquals(pose.modelPitchRadians(), head.xRot, EPSILON);
+        assertEquals(pose.modelYawRadians(), lens.yRot, EPSILON);
+        assertEquals(head.xRot, lens.xRot, EPSILON);
     }
 
     @Test
@@ -290,9 +290,9 @@ class CopperBeaconBlockEntityRendererTest {
                     readBaseModelDirection(variant.get("model").getAsString());
             directions.put(
                     mount,
-                    ModelRotation.get(x, y)
-                            .getDirectionTransformation()
-                            .map(unrotatedDirection));
+                    BlockModelRotation.by(x, y)
+                            .actualRotation()
+                            .rotate(unrotatedDirection));
         }
         return directions;
     }
@@ -348,9 +348,9 @@ class CopperBeaconBlockEntityRendererTest {
     }
 
     private static void assertDirection(Direction expected, Vector3f actual, String message) {
-        assertEquals(expected.getOffsetX(), actual.x, EPSILON, message);
-        assertEquals(expected.getOffsetY(), actual.y, EPSILON, message);
-        assertEquals(expected.getOffsetZ(), actual.z, EPSILON, message);
+        assertEquals(expected.getStepX(), actual.x, EPSILON, message);
+        assertEquals(expected.getStepY(), actual.y, EPSILON, message);
+        assertEquals(expected.getStepZ(), actual.z, EPSILON, message);
     }
 
     private static void assertVector(Vector3f expected, Vector3f actual, String message) {
