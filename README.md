@@ -10,23 +10,20 @@ support this port. Report problems here, not upstream.
 
 ## Status
 
-This is a pre-release. It loads worlds and path-traces terrain, water, sky,
-entities, particles and the first-person hands. Clouds, block entities, the
-block outline, the Copper Beacon, camera paths and the in-game settings are
-ported but have had little testing on 26.3.
+Tested in game on 26.3: terrain, water, sky, entities, particles (item-textured
+ones included), the first-person hands, rain and snow, and torch and lantern
+flames in hand. Clouds, block entities, the block outline, the Copper Beacon,
+camera paths and the in-game settings are ported but have had little testing
+on 26.3.
 
-Not ported yet:
+Known gaps:
 
-- **Rain and snow streaks.** Remix's weather lighting still applies, so
-  surfaces get wet and the sky darkens, but the falling streaks and flakes are
-  not drawn over the Remix image.
-- **Flames on held items.** Torches and lanterns in hand show no flame.
-- **Particles that use item textures.** Block and particle-atlas particles
-  render; item-textured ones are skipped.
-- **Bed materials.** Beds get no RTX materials yet.
 - **The automated tests and most docs.** These still describe the 1.21.1
   build.
 - **ARM64.** Releases carry the x64 runtime only.
+- **Held glass and ice.** A held block of glass or ice is drawn like any
+  other held block rather than with the refracting material its placed
+  counterpart gets.
 
 The upstream mod was tuned against one showcase world, and blocks, mobs and
 dimensions that world never reaches have had less care. The same holds here,
