@@ -4,7 +4,6 @@
  */
 package com.nvidia.rtxremix.minecraft.entity;
 
-import com.nvidia.rtxremix.minecraft.light.HeldLightState;
 import com.nvidia.rtxremix.minecraft.particle.ParticleTint;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.particle.SpriteSet;
@@ -17,9 +16,8 @@ import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.nvidia.rtxremix.minecraft.RtxRemixMod;
@@ -36,13 +34,14 @@ import net.minecraft.util.LightCoordsUtil;
  * Draws the lit effects of a hand-held item into the Remix capture: its
  * {@link HeldItemFlame} and the {@link HeldItemSmoke} above it.
  *
- * <p>Runs from the item renderer once the item's block-space pose is on the
- * matrix stack, so one hook serves the first-person view model, the local
- * player's hidden shadow model, other players and any mob or armor stand with a
- * torch in hand. The quads go through the same capture provider as the item,
- * on an emissive layer over the particle atlas, and the submitter gives that
- * layer the particle pipeline's own material, so a held flame and a placed
- * flame are lit by the same numbers.
+ * <p>Submitted with the item once the item's block-space pose is on the matrix
+ * stack, so one hook serves the first-person view model, the local player's
+ * hidden shadow model, other players and any mob or armor stand with a torch in
+ * hand. The quads are custom geometry that only the Remix capture's collector
+ * accepts, so they go through the same capture provider as the item, on an
+ * emissive layer over the particle atlas, and the submitter gives that layer the
+ * particle pipeline's own material, so a held flame and a placed flame are lit
+ * by the same numbers.
  *
  * <p>Every capture space is world-aligned, the first-person hand included:
  * vanilla roots the hand stack at the inverse camera rotation and carries the
@@ -63,6 +62,7 @@ public final class HeldItemEffectsRenderer {
     private static final int SMOKE_GREY = Math.round(ParticleTint.SOOT_GREY * 255.0f);
 
     private static final Matrix4f scratchPose = new Matrix4f();
+    private static final PoseStack scratchStack = new PoseStack();
     private static final Vector3f scratchAnchor = new Vector3f();
     private static final Vector3f scratchScale = new Vector3f();
     private static final HeldItemSmoke.Puff[] scratchPuffs = new HeldItemSmoke.Puff[HeldItemSmoke.SLOTS];
@@ -74,30 +74,27 @@ public final class HeldItemEffectsRenderer {
     private HeldItemEffectsRenderer() {}
 
     /**
-     * Emits the flame and smoke quads for {@code stack} if the Remix capture is
-     * active, {@code mode} is a hand, the item carries a lit element, and that
-     * element is burning in its holder's hand, see {@link HeldLightState}.
+     * Submits the flame and smoke quads for a hand-held item whose flame is
+     * burning, as decided at extraction, see {@link HeldItemFlameSource}. Only the
+     * Remix capture's collector takes them, so vanilla never draws them.
      *
-     * <p>Not called on Minecraft 26.3 yet: items are submitted there and drawn
-     * later, so the holder this needs is no longer in scope when the item's pose is.
-     *
-     * @param matrices     the item renderer's stack, with the item's block-space
-     *                     pose on top; left as found
-     * @param displayScale the scale of the item model's display transform for
-     *                     {@code mode}, which is part of that pose
+     * @param matrices      the item's stack, with the item's block-space pose on
+     *                      top; left as found
+     * @param flameParticle the burning flame's particle
+     * @param displayScale  the scale of the item model's display transform for
+     *                      {@code mode}, which is part of that pose
      */
-    public static void render(ItemStack stack, ItemDisplayContext mode,
-                              PoseStack matrices, RemixVertexConsumerProvider consumers,
-                              float displayScale) {
+    public static void submit(PoseStack matrices, SubmitNodeCollector collector, ItemDisplayContext mode,
+                              SimpleParticleType flameParticle, float displayScale) {
+        if (!(collector instanceof RemixSubmitNodeStorage) || !HeldItemFlame.isHandMode(mode)) return;
+        collector.submitCustomGeometry(matrices, EFFECT_LAYER,
+                (pose, buffer) -> emit(pose.pose(), buffer, mode, flameParticle, displayScale));
+    }
+
+    private static void emit(Matrix4f itemPose, VertexConsumer buffer, ItemDisplayContext mode,
+                             SimpleParticleType flameParticle, float displayScale) {
         EntityRenderContext context = EntityRenderContext.get();
-        if (!context.isRemixPass() || !HeldItemFlame.isHandMode(mode)) return;
-        SimpleParticleType flameParticle = HeldItemFlame.particleFor(stack);
-        if (flameParticle == null) return;
-        // Null outside a hand: an item_display posed with a hand transform reaches
-        // this hook with no HeldItemRenderer above it. Nothing in HeldLightState
-        // can put out a prop, so it burns.
-        LivingEntity holder = context.getHeldItemHolder();
-        if (holder != null && !HeldLightState.isLit(holder, stack)) return;
+        if (!context.isRemixPass()) return;
 
         Minecraft client = Minecraft.getInstance();
         if (client.level == null) return;
@@ -113,14 +110,10 @@ public final class HeldItemEffectsRenderer {
         // Null when the capture does not know where the eye is; the poses then stay at depth 1.
         Vector3fc eye = context.getEye();
         float depthFraction = HeldItemFlame.depthFraction(mode);
-        Matrix4f itemPose = matrices.last().pose();
         // A hand draws its item scaled down (item/generated: 0.68 in first person,
         // 0.55 in third). The flame and smoke are world-sized, so the poses divide
         // that scale back out.
-        VertexConsumer buffer = consumers.getBuffer(EFFECT_LAYER);
-
-        matrices.pushPose();
-        PoseStack.Pose entry = matrices.last();
+        PoseStack.Pose entry = scratchStack.last();
         entry.normal().rotation(facing);
 
         double seconds = ticks / TICKS_PER_SECOND;
@@ -143,7 +136,6 @@ public final class HeldItemEffectsRenderer {
                         SMOKE_GREY, SMOKE_ALPHA);
             }
         }
-        matrices.popPose();
     }
 
     private static SpriteSet spriteProvider(Minecraft client, ParticleType<?> particle) {

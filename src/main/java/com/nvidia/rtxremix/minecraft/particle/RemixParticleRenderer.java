@@ -38,10 +38,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import com.nvidia.rtxremix.minecraft.mixin.ParticleGroupAccessor;
 import net.minecraft.client.particle.ParticleGroup;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.resources.Identifier;
+import com.nvidia.rtxremix.minecraft.entity.RemixEntitySubmitter;
 
 /**
  * Per-frame particle renderer backed by growable dynamic meshes.
@@ -72,6 +75,16 @@ public class RemixParticleRenderer {
     private final RemixRenderer renderer;
     private final ParticleAtlasManager atlasManager;
     private final HashMap<BucketKey, DynamicBucket> buckets = new HashMap<>();
+    /** This frame's bucket per other atlas; a null value means its material is not ready yet. */
+    private final HashMap<Identifier, DynamicBucket> otherAtlasBuckets = new HashMap<>();
+    /**
+     * Cutout materials over atlases other than the block and particle atlases, resolved on
+     * the render thread before each prepare, since building one reaches the entity
+     * submitter and the Remix API. The worker only reads this snapshot.
+     */
+    private volatile Map<Identifier, RemixMaterial> otherAtlasMaterials = Map.of();
+    /** Atlases the worker met without a material, for the render thread to resolve next. */
+    private final Set<Identifier> requestedOtherAtlases = ConcurrentHashMap.newKeySet();
 
     private InstanceInfoBlendEXT blendExt;
     private long pNext;
@@ -132,10 +145,12 @@ public class RemixParticleRenderer {
         ParticleBillboardBasis billboardBasis = ParticleBillboardBasis.fromCamera(qx, qy, qz, qw);
 
         // A quad particle names the atlas it samples. The block atlas is drawn with the
-        // terrain cutout material, the particle atlas with the particle atlas material;
-        // the item atlas, which only item-break particles sample, is not captured.
+        // terrain cutout material, the particle atlas with the particle atlas material,
+        // and any other atlas, chiefly the item atlas that item-break particles sample,
+        // with the cutout material entity capture builds over it, lit like terrain.
         DynamicBucket terrainBucket = bucketFor(true, blockTexMgr);
         DynamicBucket particleBucket = bucketFor(false, blockTexMgr);
+        otherAtlasBuckets.clear();
 
         for (ParticleGroup<?> group : particleMap.values()) {
             Queue<? extends Particle> queue = ((ParticleGroupAccessor) group).rtxremix$getParticles();
@@ -155,7 +170,10 @@ public class RemixParticleRenderer {
                 } else if (TextureAtlas.LOCATION_PARTICLES.equals(atlas)) {
                     bucket = particleBucket;
                 } else {
-                    continue;
+                    if (!otherAtlasBuckets.containsKey(atlas)) {
+                        otherAtlasBuckets.put(atlas, bucketForOtherAtlas(atlas));
+                    }
+                    bucket = otherAtlasBuckets.get(atlas);
                 }
                 if (bucket == null) continue;
 
@@ -317,6 +335,34 @@ public class RemixParticleRenderer {
         return getOrCreateBucket(
                 new BucketKey(material.getHandle(), categoryFlags, blendKind),
                 material, categoryFlags, blendKind);
+    }
+
+    /**
+     * Resolves the cutout materials the next prepare may need, the item atlas's always.
+     * Render thread only.
+     */
+    public void resolveOtherAtlasMaterials(RemixEntitySubmitter submitter) {
+        if (submitter == null) return;
+        requestedOtherAtlases.add(TextureAtlas.LOCATION_ITEMS);
+        Map<Identifier, RemixMaterial> resolved = new HashMap<>();
+        for (Identifier atlas : requestedOtherAtlases) {
+            RemixMaterial material = submitter.getCutoutAtlasMaterial(atlas);
+            if (material != null) resolved.put(atlas, material);
+        }
+        otherAtlasMaterials = resolved;
+    }
+
+    /** The terrain-lit cutout bucket over an atlas other than the block and particle atlases. */
+    private DynamicBucket bucketForOtherAtlas(Identifier atlas) {
+        RemixMaterial material = otherAtlasMaterials.get(atlas);
+        if (material == null) {
+            requestedOtherAtlases.add(atlas);
+            return null;
+        }
+        if (!material.isAlive()) return null;
+        return getOrCreateBucket(
+                new BucketKey(material.getHandle(), 0, BLEND_TERRAIN),
+                material, 0, BLEND_TERRAIN);
     }
 
     private DynamicBucket getOrCreateBucket(BucketKey key, RemixMaterial material,

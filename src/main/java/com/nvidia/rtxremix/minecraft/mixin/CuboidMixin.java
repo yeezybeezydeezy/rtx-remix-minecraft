@@ -39,7 +39,7 @@ public class CuboidMixin {
     private void rtxremix$onRenderCuboid(PoseStack.Pose entry, VertexConsumer vertexConsumer,
                                           int light, int overlay, int color,
                                           CallbackInfo ci) {
-        // Sprite-atlas models (chests, beds, banners, shields, pots) draw through a
+        // Sprite-atlas models (chests, banners, shields, pots) draw through a
         // wrapper whose only behaviour is remapping UVs into the sprite's rectangle.
         // The capture reproduces that remap when it rebuilds the cuboid, so the
         // wrapper is looked through and the sprite travels with the part: one cuboid

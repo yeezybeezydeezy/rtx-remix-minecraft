@@ -1022,6 +1022,7 @@ public class RemixRenderer {
             return null;
         }
 
+        particleRenderer.resolveOtherAtlasMaterials(entitySubmitter);
         CompletableFuture<ParticleRenderResult> future = CompletableFuture.supplyAsync(
                 () -> renderParticlesOnWorker(tickDelta, frameIndex),
                 particleExecutor);
@@ -1649,6 +1650,10 @@ public class RemixRenderer {
 
     public BlockTextureManager getTextureManager() {
         return textureManager;
+    }
+
+    public RemixEntitySubmitter getEntitySubmitter() {
+        return entitySubmitter;
     }
 
     public RemixWeatherRenderer getWeatherRenderer() {

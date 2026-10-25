@@ -136,13 +136,17 @@ public class RemixEntitySubmitter {
     private static final Identifier SHIELD_PATTERNS_ATLAS_TEXTURE =
             Identifier.fromNamespaceAndPath("minecraft", "textures/atlas/shield_patterns.png");
     private static final Identifier PARTICLE_ATLAS_ID = TextureAtlas.LOCATION_PARTICLES;
-    private static final Identifier BEDS_ATLAS_TEXTURE =
-            Identifier.fromNamespaceAndPath("minecraft", "textures/atlas/beds.png");
+    /**
+     * The largest block-entity atlas, warmed before the first frame that needs it. Beds,
+     * which used to own the largest, are block models on the block atlas in 26.3.
+     */
+    private static final Identifier CHEST_ATLAS_TEXTURE =
+            Identifier.fromNamespaceAndPath("minecraft", "textures/atlas/chest.png");
     private static final Identifier MAP_DECORATIONS_ATLAS_TEXTURE =
             Identifier.fromNamespaceAndPath("minecraft", "textures/atlas/map_decorations.png");
     private static final String DYNAMIC_MAP_TEXTURE_PREFIX = "dynamic/map/";
-    private static final EntityMaterialKey BEDS_ATLAS_MATERIAL_KEY =
-            new EntityMaterialKey(BEDS_ATLAS_TEXTURE, RenderLayerUtils.SurfaceMode.OPAQUE);
+    private static final EntityMaterialKey CHEST_ATLAS_MATERIAL_KEY =
+            new EntityMaterialKey(CHEST_ATLAS_TEXTURE, RenderLayerUtils.SurfaceMode.OPAQUE);
     static final InstanceInfoBlendEXT VERTEX_COLOR_MODULATE =
             InstanceInfoBlendEXT.textureTimesVertexColor();
     static final InstanceInfoBlendEXT BANNER_PATTERN_BLEND =
@@ -2083,6 +2087,18 @@ public class RemixEntitySubmitter {
     }
 
     /** Caches a freshly created material and retires any pending missing-material record for it. */
+    /**
+     * The cutout material over one of Minecraft's sprite atlases, built on first use
+     * the way an entity layer sampling that atlas gets it. Null until it can be built,
+     * which for a freshly stitched atlas can take a frame.
+     */
+    public RemixMaterial getCutoutAtlasMaterial(Identifier atlasTexture) {
+        EntityMaterialKey key = new EntityMaterialKey(atlasTexture, RenderLayerUtils.SurfaceMode.CUTOUT);
+        ensureMaterial(key);
+        RemixMaterial material = materialCache.get(key);
+        return material != null && !material.isDeleted() ? material : null;
+    }
+
     private void cacheMaterial(EntityMaterialKey materialKey, RemixMaterial material) {
         if (material == null) return;
         materialCache.put(materialKey, material);
@@ -2237,18 +2253,18 @@ public class RemixEntitySubmitter {
 
     /**
      * Creates the largest block-entity atlas during renderer warm-up instead of
-     * stalling the first frame in which a bed becomes visible.
+     * stalling the first frame in which a chest becomes visible.
      *
      * @return true only when a live material is cached for the atlas
      */
     public boolean preloadLargeBlockEntityAtlases() {
-        ensureMaterial(BEDS_ATLAS_MATERIAL_KEY);
+        ensureMaterial(CHEST_ATLAS_MATERIAL_KEY);
         return hasLiveLargeBlockEntityAtlasMaterial();
     }
 
-    /** Returns whether the preloaded bed-atlas material is still cached and usable. */
+    /** Returns whether the preloaded chest-atlas material is still cached and usable. */
     public boolean hasLiveLargeBlockEntityAtlasMaterial() {
-        RemixMaterial material = materialCache.get(BEDS_ATLAS_MATERIAL_KEY);
+        RemixMaterial material = materialCache.get(CHEST_ATLAS_MATERIAL_KEY);
         return material != null && !material.isDeleted();
     }
 

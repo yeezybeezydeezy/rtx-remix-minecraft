@@ -42,7 +42,7 @@ import net.minecraft.client.renderer.feature.submit.SubmitNode;
  */
 public final class RemixSubmitReplay {
 
-    private final SubmitNodeStorage storage = new SubmitNodeStorage();
+    private final SubmitNodeStorage storage = new RemixSubmitNodeStorage();
     private final FeatureRendererMap renderers = new FeatureRendererMap();
     private final List<SubmitNode> pending = new ArrayList<>();
     private final List<SubmitNode> group = new ArrayList<>();
